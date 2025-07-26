@@ -9,6 +9,7 @@ import { AppGateway } from './app.gateway';
 import { AppSchema } from './app.model';
 import { JwtModule } from '@nestjs/jwt';
 import { SocketAuthMiddleware } from './auth-guards/socket-auth.middleware';
+import { GroupModule } from 'src/group/group.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { SocketAuthMiddleware } from './auth-guards/socket-auth.middleware';
     MongooseModule.forFeature([{ name: 'App', schema: AppSchema }]),
     forwardRef(() => BotModule),
     UserModule,
+    GroupModule,
   ],
   controllers: [AppController],
   providers: [AppService, AppGateway, SocketAuthMiddleware],

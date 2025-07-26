@@ -22,6 +22,16 @@ export const UserSchema = new mongoose.Schema(
       require: true,
       default: '',
     },
+    blackList: {
+      type: Boolean,
+      require: true,
+      default: false,
+    },
+    gameName: {
+      type: String,
+      require: true,
+      default: 'Noname',
+    },
   },
   { timestamps: true },
 );
@@ -31,6 +41,8 @@ export interface User {
   first_name?: string;
   username?: string;
   language_code?: string;
+  blackList: boolean;
+  gameName: string;
 }
 
 export type UserDocument = User & mongoose.Document;

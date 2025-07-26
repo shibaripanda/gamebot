@@ -7,7 +7,41 @@ import { User, UserDocument } from './user.model';
 export class UserService {
   constructor(@InjectModel('User') private userMongo: Model<UserDocument>) {}
 
-  async createUserOrUpdateUser(user: User) {
+  async getUser(userId: number) {
+    const userRes: User | null = await this.userMongo.findOne({ id: userId });
+    return userRes;
+  }
+
+  async getBlacklistedUserIds(): Promise<number[]> {
+    const users: User[] = await this.userMongo.find(
+      { blackList: true },
+      { id: 1, _id: 0 },
+    );
+
+    return users.map((user) => user.id);
+  }
+
+  async markUserWhitelisted(userId: number): Promise<void> {
+    const res = await this.userMongo.updateOne(
+      { id: userId },
+      { $set: { blackList: false } },
+      { upsert: true },
+    );
+
+    console.log(`User ${userId} marked as whitelisted`, res);
+  }
+
+  async markUserBlacklisted(userId: number): Promise<void> {
+    const res = await this.userMongo.updateOne(
+      { id: userId },
+      { $set: { blackList: true } },
+      { upsert: true },
+    );
+
+    console.log(`User ${userId} marked as blacklisted`, res);
+  }
+
+  async createUserOrUpdateUser(user: Omit<User, 'gameName' | 'blackList'>) {
     const userRes = await this.userMongo.updateOne({ id: user.id }, user, {
       upsert: true,
     });

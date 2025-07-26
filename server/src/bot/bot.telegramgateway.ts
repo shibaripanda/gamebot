@@ -13,6 +13,11 @@ import { AppService } from 'src/app/app.service';
 import { UserService } from 'src/user/user.service';
 import { Context, NarrowedContext } from 'telegraf';
 
+export type UserTelegrafContext = NarrowedContext<
+  Context,
+  UpdateTelegraf.MessageUpdate
+>;
+
 @Update()
 export class TelegramGateway {
   constructor(
@@ -20,6 +25,19 @@ export class TelegramGateway {
     private appService: AppService,
     private userService: UserService,
   ) {}
+
+  @Action('faq')
+  async faq(@Ctx() ctx: UserTelegrafContext) {
+    console.log('@Action faq');
+    await this.botService.sendTextMessage(ctx.from.id, 'Инструкция');
+  }
+
+  @Start()
+  async start(@Ctx() ctx: UserTelegrafContext) {
+    console.log('@Start');
+    await this.userService.createUserOrUpdateUser(ctx.from);
+    await this.botService.startMessage(ctx.from.id);
+  }
 
   @On('chat_member')
   async onChatMemberUpdate(
@@ -61,15 +79,6 @@ export class TelegramGateway {
   @On('photo')
   async addNewOrderImages(@Ctx() ctx: Context) {
     await ctx.reply('get photo');
-  }
-
-  @Start()
-  async start(@Ctx() ctx: Context) {
-    console.log(ctx.from);
-    if (ctx.from) {
-      await this.userService.createUserOrUpdateUser(ctx.from);
-    }
-    await ctx.reply('get start');
   }
 
   @Action('closeAccess')

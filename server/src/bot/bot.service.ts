@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectBot } from 'nestjs-telegraf';
+import { Group } from 'src/group/group.model';
+import { GroupService } from 'src/group/group.service';
+import { User } from 'src/user/user.model';
+import { UserService } from 'src/user/user.service';
 import { Telegraf } from 'telegraf';
 
 @Injectable()
@@ -8,7 +12,50 @@ export class BotService {
   constructor(
     @InjectBot() private bot: Telegraf,
     private readonly config: ConfigService,
+    private groupService: GroupService,
+    private userService: UserService,
   ) {}
+
+  async getListUsersOfGroup(groupName: string) {
+    const group: Group | null = await this.groupService.getGroup(groupName);
+    const resList: { index: number; gameName: string }[] = [];
+    if (group) {
+      for (const user of group.users) {
+        if (user) {
+          const currentUser: User | null = await this.userService.getUser(user);
+          if (currentUser) {
+            resList.push({
+              index: group.users.indexOf(user) + 1,
+              gameName: currentUser.gameName,
+            });
+          }
+        } else {
+          resList.push({
+            index: group.users.indexOf(user) + 1,
+            gameName: '--',
+          });
+        }
+      }
+    }
+    return resList;
+  }
+
+  async startMessage(userId: number) {
+    await this.bot.telegram.sendMessage(userId, 'Приветствую', {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: 'Записаться', callback_data: 'takePlace' }],
+          [{ text: 'FAQ', callback_data: 'faq' }],
+          [
+            {
+              text: 'Отказаться от рассылки',
+              callback_data: 'stopReciveMessages',
+            },
+          ],
+        ],
+      },
+    });
+  }
 
   async sendTextMessage(userId: number, text: string) {
     await this.bot.telegram.sendMessage(userId, text);

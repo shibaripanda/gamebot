@@ -7,6 +7,7 @@ import { ConfigService } from '@nestjs/config';
 // import { AppService } from 'src/app/app.service';
 import { AppModule } from 'src/app/app.module';
 import { UserModule } from 'src/user/user.module';
+import { GroupModule } from 'src/group/group.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { UserModule } from 'src/user/user.module';
     }),
     forwardRef(() => AppModule),
     forwardRef(() => UserModule),
+    forwardRef(() => GroupModule),
   ],
   controllers: [],
   providers: [BotService, BotLifecycleService, TelegramGateway],
