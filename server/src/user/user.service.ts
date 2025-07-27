@@ -7,6 +7,8 @@ import { User, UserDocument } from './user.model';
 export class UserService {
   constructor(@InjectModel('User') private userMongo: Model<UserDocument>) {}
 
+  admins: number[] = [599773731];
+
   async getUser(userId: number) {
     const userRes: User | null = await this.userMongo.findOne({ id: userId });
     return userRes;

@@ -40,6 +40,17 @@ export class BotService {
     return resList;
   }
 
+  async getGroupsButtonsList(userId: number) {
+    const allGroups = await this.groupService.getGroups();
+    await this.bot.telegram.sendMessage(userId, 'Выбирай!', {
+      reply_markup: {
+        inline_keyboard: allGroups.map((gr) => [
+          { text: gr.name, callback_data: gr._id },
+        ]),
+      },
+    });
+  }
+
   async startMessage(userId: number) {
     await this.bot.telegram.sendMessage(userId, 'Приветствую', {
       reply_markup: {

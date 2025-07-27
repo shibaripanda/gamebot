@@ -1,4 +1,4 @@
-import { Update as UpdateTelegraf } from '@telegraf/types';
+import { Message, Update as UpdateTelegraf } from '@telegraf/types';
 import { BotService } from './bot.service';
 import {
   Action,
@@ -12,6 +12,9 @@ import {
 import { AppService } from 'src/app/app.service';
 import { UserService } from 'src/user/user.service';
 import { Context, NarrowedContext } from 'telegraf';
+import { UseGuards } from '@nestjs/common';
+import { AdminGuardAccess } from './botGuardAndMiddleware/access-control.guard';
+import { GroupService } from 'src/group/group.service';
 
 export type UserTelegrafContext = NarrowedContext<
   Context,
@@ -24,7 +27,46 @@ export class TelegramGateway {
     private botService: BotService,
     private appService: AppService,
     private userService: UserService,
+    private groupService: GroupService,
   ) {}
+
+  @Hears(/^deletegroup(?:\s+(.*))?$/i)
+  @UseGuards(AdminGuardAccess)
+  async deletegroup(@Ctx() ctx: UserTelegrafContext) {
+    console.log('@Hears deletegroup', ctx.from.id);
+    const message = ctx.message as Message.TextMessage;
+
+    const match = message.text.match(/^deletegroup(?:\s+(.*))?$/i);
+    const rawName = match?.[1]?.trim();
+
+    const groupName =
+      rawName && rawName.length > 0 ? rawName : `New Group ${Date.now()}`;
+
+    await this.groupService.deleteGroup(groupName);
+    await ctx.reply(`✅ Группа "${groupName}" успешно удалена.`);
+  }
+
+  @Hears(/^addgroup(?:\s+(.*))?$/i)
+  @UseGuards(AdminGuardAccess)
+  async addgroup(@Ctx() ctx: UserTelegrafContext) {
+    console.log('@Hears addgroup', ctx.from.id);
+    const message = ctx.message as Message.TextMessage;
+
+    const match = message.text.match(/^addgroup(?:\s+(.*))?$/i);
+    const rawName = match?.[1]?.trim();
+
+    const groupName =
+      rawName && rawName.length > 0 ? rawName : `New Group ${Date.now()}`;
+
+    await this.groupService.createGroup(groupName);
+    await ctx.reply(`✅ Группа "${groupName}" успешно создана.`);
+  }
+
+  @Action('takePlace')
+  async takePlace(@Ctx() ctx: UserTelegrafContext) {
+    console.log('@Action takePlace');
+    await this.botService.getGroupsButtonsList(ctx.from.id);
+  }
 
   @Action('faq')
   async faq(@Ctx() ctx: UserTelegrafContext) {
@@ -82,6 +124,7 @@ export class TelegramGateway {
   }
 
   @Action('closeAccess')
+  @UseGuards(AdminGuardAccess)
   async closeAccess(@Ctx() ctx: Context) {
     console.log('Access close');
     if (ctx.from) {
@@ -90,6 +133,7 @@ export class TelegramGateway {
   }
 
   @Command('enter')
+  @UseGuards(AdminGuardAccess)
   async getAuthLink(@Ctx() ctx: Context) {
     if (ctx && ctx.from) {
       await ctx.reply(this.appService.getAuthLink(ctx.from.id));

@@ -30,6 +30,7 @@ export const GroupSchema = new mongoose.Schema(
 );
 
 export interface Group {
+  _id: string;
   name: string;
   users: number[];
   maxCountUsersInGroup: number;

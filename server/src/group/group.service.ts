@@ -100,8 +100,13 @@ export class GroupService {
     console.log(updateRes);
   }
 
+  async deleteGroup(name: string) {
+    const groupRes = await this.groupMongo.deleteOne({ name: name });
+    console.log(groupRes);
+  }
+
   async createGroup(name: string) {
-    const groupRes = await this.groupMongo.create(name);
+    const groupRes = await this.groupMongo.create({ name: name });
     console.log(groupRes);
   }
 }
