@@ -39,6 +39,8 @@ export function StartPage() {
     })
     .catch((e) => {
       console.log(e.response.data.message)
+      sessionStorage.removeItem('token');
+      navigate('/')
     })
   }
 
