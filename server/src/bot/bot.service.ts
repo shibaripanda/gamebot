@@ -52,20 +52,35 @@ export class BotService {
   }
 
   async startMessage(userId: number) {
-    await this.bot.telegram.sendMessage(userId, 'Приветствую', {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: 'Записаться', callback_data: 'takePlace' }],
-          [{ text: 'FAQ', callback_data: 'faq' }],
-          [
-            {
-              text: 'Отказаться от рассылки',
-              callback_data: 'stopReciveMessages',
-            },
+    await this.bot.telegram.sendMessage(
+      userId,
+      'Всем привет, это Крюгер-бот!😎 Здесь вы можете записаться на закупку акций альянса!🤝',
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: 'Записаться на акцию альянса',
+                callback_data: 'takePlace',
+              },
+            ],
+            [{ text: 'Инструкция по закупке', callback_data: 'faq' }],
+            [
+              {
+                text: 'Подарки от Крюгера',
+                callback_data: 'stopReciveMessages',
+              },
+            ],
+            [
+              {
+                text: 'дополнительные услуги',
+                callback_data: 'stopReciveMessages',
+              },
+            ],
           ],
-        ],
+        },
       },
-    });
+    );
   }
 
   async sendTextMessage(userId: number, text: string) {

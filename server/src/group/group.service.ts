@@ -105,8 +105,7 @@ export class GroupService {
     console.log(groupRes);
   }
 
-  async createGroup(name: string) {
-    const groupRes = await this.groupMongo.create({ name: name });
-    console.log(groupRes);
+  async createGroup(newGroup: Pick<Group, 'name' | 'promo' | 'aliance'>) {
+    return await this.groupMongo.create({ ...newGroup });
   }
 }

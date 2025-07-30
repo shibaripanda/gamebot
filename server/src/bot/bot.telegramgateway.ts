@@ -46,21 +46,21 @@ export class TelegramGateway {
     await ctx.reply(`✅ Группа "${groupName}" успешно удалена.`);
   }
 
-  @Hears(/^addgroup(?:\s+(.*))?$/i)
-  @UseGuards(AdminGuardAccess)
-  async addgroup(@Ctx() ctx: UserTelegrafContext) {
-    console.log('@Hears addgroup', ctx.from.id);
-    const message = ctx.message as Message.TextMessage;
+  // @Hears(/^addgroup(?:\s+(.*))?$/i)
+  // @UseGuards(AdminGuardAccess)
+  // async addgroup(@Ctx() ctx: UserTelegrafContext) {
+  //   console.log('@Hears addgroup', ctx.from.id);
+  //   const message = ctx.message as Message.TextMessage;
 
-    const match = message.text.match(/^addgroup(?:\s+(.*))?$/i);
-    const rawName = match?.[1]?.trim();
+  //   const match = message.text.match(/^addgroup(?:\s+(.*))?$/i);
+  //   const rawName = match?.[1]?.trim();
 
-    const groupName =
-      rawName && rawName.length > 0 ? rawName : `New Group ${Date.now()}`;
+  //   const groupName =
+  //     rawName && rawName.length > 0 ? rawName : `New Group ${Date.now()}`;
 
-    await this.groupService.createGroup(groupName);
-    await ctx.reply(`✅ Группа "${groupName}" успешно создана.`);
-  }
+  //   await this.groupService.createGroup(groupName);
+  //   await ctx.reply(`✅ Группа "${groupName}" успешно создана.`);
+  // }
 
   @Action('takePlace')
   async takePlace(@Ctx() ctx: UserTelegrafContext) {

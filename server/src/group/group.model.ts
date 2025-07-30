@@ -7,6 +7,14 @@ export const GroupSchema = new mongoose.Schema(
       unique: true,
       require: true,
     },
+    promo: {
+      type: String,
+      require: true,
+    },
+    aliance: {
+      type: String,
+      require: true,
+    },
     users: {
       type: Array,
       default: [],
@@ -32,6 +40,8 @@ export const GroupSchema = new mongoose.Schema(
 export interface Group {
   _id: string;
   name: string;
+  promo: string;
+  aliance: string;
   users: number[];
   maxCountUsersInGroup: number;
   telegramGroup?: number;

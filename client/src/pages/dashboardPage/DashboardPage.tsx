@@ -1,10 +1,16 @@
 import { Button, Center, Space } from "@mantine/core";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createSocket } from "../../utils/socket";
+import { CreateNewGroupModal } from "../../components/createNewGroup/CreateNewGroup";
+import { NewGroup } from "./interfaces/newGroup";
+import { ServerResponce } from "./interfaces/serverResponce";
 
 export function DashboardPage() {
   const navigate = useNavigate();
+  const [newGroup, setNewGroup] = useState<NewGroup>({name: '', promo: '', aliance: ''})
+
+  const socketRef = useRef<any>(null);
 
   useEffect(() => {
     const token = sessionStorage.getItem('token');
@@ -13,6 +19,7 @@ export function DashboardPage() {
       return;
     }
     const socket = createSocket(token);
+    socketRef.current = socket
     socket.on('connect', () => {
       console.log('Connected', socket.id);
     });
@@ -29,9 +36,22 @@ export function DashboardPage() {
     };
   }, [navigate]);
 
+  const createNewGroup = (close: () => void) => {
+    if (!socketRef.current) return;
+    console.log(newGroup)
+    socketRef.current.emit('createNewGroup', newGroup, (response: ServerResponce) => {
+      console.log('Group creation response:', response);
+      if(!response.success) return
+      setNewGroup({name: '', promo: '', aliance: ''})
+      close()
+    });
+
+  }
+
   if(sessionStorage.getItem('token')){
     return (
       <>
+      <CreateNewGroupModal newGroup={newGroup} setNewGroup={setNewGroup} createNewGroup={createNewGroup}/>
         <Center>
           Dashboard
           <Space/>
