@@ -32,6 +32,11 @@ export const UserSchema = new mongoose.Schema(
       require: true,
       default: 'Noname',
     },
+    email: {
+      type: String,
+      require: true,
+      default: '',
+    },
   },
   { timestamps: true },
 );

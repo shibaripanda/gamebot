@@ -1,7 +1,7 @@
 import { Group } from "./group";
 
-export interface ServerResponce {
+export interface GetGroups {
     success: boolean;
     message: string;
-    group: Group;
+    groups: Group[];
 }

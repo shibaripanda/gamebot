@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectBot } from 'nestjs-telegraf';
-import { Group } from 'src/group/group.model';
+// import { Group } from 'src/group/group.model';
 import { GroupService } from 'src/group/group.service';
-import { User } from 'src/user/user.model';
+// import { User } from 'src/user/user.model';
 import { UserService } from 'src/user/user.service';
 import { Telegraf } from 'telegraf';
 
@@ -16,39 +16,116 @@ export class BotService {
     private userService: UserService,
   ) {}
 
-  async getListUsersOfGroup(groupName: string) {
-    const group: Group | null = await this.groupService.getGroup(groupName);
-    const resList: { index: number; gameName: string }[] = [];
-    if (group) {
-      for (const user of group.users) {
-        if (user) {
-          const currentUser: User | null = await this.userService.getUser(user);
-          if (currentUser) {
-            resList.push({
-              index: group.users.indexOf(user) + 1,
-              gameName: currentUser.gameName,
-            });
-          }
-        } else {
-          resList.push({
-            index: group.users.indexOf(user) + 1,
-            gameName: '--',
-          });
-        }
-      }
+  async startRegistration(userId: number, groupId: string) {
+    const group = await this.groupService.getGroup(groupId);
+    console.log(group);
+    if (!group) {
+      await this.getGroupsButtonsList(userId);
+      return;
     }
-    return resList;
+
+    // if (group.users.length >= group.maxCountUsersInGroup) {
+    //   await this.soldOutMessage(userId);
+    //   return;
+    // }
+
+    const res = await this.groupService.addUserToGroup(groupId, userId);
+    console.log(res);
+    return true;
   }
+
+  async soldOutMessage(userId: number) {
+    const buttons = [
+      [{ text: 'Записаться в другую группу', callback_data: 'takePlace' }],
+      [{ text: 'В начало', callback_data: 'mainMenu' }],
+    ];
+    await this.bot.telegram.sendMessage(
+      userId,
+      `К сожалению, все места уже заняты :( Запишитесь в другую группу или подождите пока мы создадим новую. Актуальную информацию о времени создания новой группы или ходе записи вы можете узнать нажав на кнопку "Чат закупок"`,
+      {
+        reply_markup: {
+          inline_keyboard: buttons,
+        },
+      },
+    );
+  }
+
+  async extraService(userId: number) {
+    const buttons = [[{ text: 'В начало', callback_data: 'mainMenu' }]];
+    await this.bot.telegram.sendMessage(
+      userId,
+      `Кроме доната в игры я могу помочь с оплатой подписок ... текст будет изменен`,
+      {
+        reply_markup: {
+          inline_keyboard: buttons,
+        },
+      },
+    );
+  }
+
+  async faq(userId: number) {
+    const buttons = [
+      [{ text: 'Понятно, записываюсь!', callback_data: 'takePlace' }],
+      [{ text: 'В начало', callback_data: 'mainMenu' }],
+    ];
+    await this.bot.telegram.sendMessage(
+      userId,
+      `Вот как тут всё устроено: текст будет изменен...`,
+      {
+        reply_markup: {
+          inline_keyboard: buttons,
+        },
+      },
+    );
+  }
+
+  // async getListUsersOfGroup(groupName: string) {
+  //   const group: Group | null = await this.groupService.getGroup(groupName);
+  //   const resList: { index: number; gameName: string }[] = [];
+  //   if (group) {
+  //     for (const user of group.users) {
+  //       if (user) {
+  //         const currentUser: User | null = await this.userService.getUser(user);
+  //         if (currentUser) {
+  //           resList.push({
+  //             index: group.users.indexOf(user) + 1,
+  //             gameName: currentUser.gameName,
+  //           });
+  //         }
+  //       } else {
+  //         resList.push({
+  //           index: group.users.indexOf(user) + 1,
+  //           gameName: '--',
+  //         });
+  //       }
+  //     }
+  //   }
+  //   return resList;
+  // }
 
   async getGroupsButtonsList(userId: number) {
     const allGroups = await this.groupService.getGroups();
-    await this.bot.telegram.sendMessage(userId, 'Выбирай!', {
-      reply_markup: {
-        inline_keyboard: allGroups.map((gr) => [
-          { text: gr.name, callback_data: gr._id },
-        ]),
+    const buttons = allGroups.map((gr) => [
+      {
+        text:
+          gr.promo + ' ' + `(${gr.users.length}/${gr.maxCountUsersInGroup})`,
+        callback_data: 'reservPlaceInGroup:' + gr._id,
       },
-    });
+    ]);
+    buttons.push([
+      { text: 'Обновить', callback_data: 'takePlace' },
+      { text: 'В начало', callback_data: 'mainMenu' },
+    ]);
+    // buttons.push([{ text: 'В начало', callback_data: 'mainMenu' }]);
+    await this.bot.telegram.sendMessage(
+      userId,
+      `Отлично в какую группу вас записать? Продолжая запись вы соглашаетесь на обработку ваших персональныхданных. Если вы не согласны то нажмите кнопку "В начало".`,
+      {
+        reply_markup: {
+          inline_keyboard: buttons,
+        },
+      },
+    );
   }
 
   async startMessage(userId: number) {
@@ -74,7 +151,7 @@ export class BotService {
             [
               {
                 text: 'дополнительные услуги',
-                callback_data: 'stopReciveMessages',
+                callback_data: 'extraService',
               },
             ],
           ],

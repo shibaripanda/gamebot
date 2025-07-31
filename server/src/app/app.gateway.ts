@@ -51,24 +51,24 @@ export class AppGateway
     this.logger.log(`Client disconnected: ${client.id}`);
   }
 
+  @SubscribeMessage('getGroups')
+  @UseGuards(WsJwtAuthGuard)
+  async handleGetGroups(): Promise<any> {
+    const res = await this.groupService.getGroups();
+    if (!res) return { success: false, message: 'Группы не загружены' };
+    return { success: true, message: 'Группы получены', groups: res };
+  }
+
   @SubscribeMessage('createNewGroup')
   @UseGuards(WsJwtAuthGuard)
   async handleCreateGroup(
     client: Socket,
     payload: Pick<Group, 'name' | 'promo' | 'aliance'>,
   ): Promise<any> {
+    console.log(payload);
     this.logger.log(`Создание группы: ${JSON.stringify(payload)}`);
     const res = await this.groupService.createGroup(payload);
     if (!res) return { success: false, message: 'Группа не создана' };
-    return { success: true, message: 'Группа создана' };
-  }
-
-  @SubscribeMessage('messageToServer')
-  @UseGuards(WsJwtAuthGuard)
-  handleMessage(client: Socket, payload: any): void {
-    this.logger.log(
-      `Received message from ${client.id}: ${JSON.stringify(payload)}`,
-    );
-    this.server.emit('messageToClient', payload); // широковещательно всем
+    return { success: true, message: 'Группа создана', group: res };
   }
 }

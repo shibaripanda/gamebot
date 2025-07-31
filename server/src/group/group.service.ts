@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Group, GroupDocument } from './group.model';
+import { Group, GroupDocument, UserInGroup } from './group.model';
 import { Model } from 'mongoose';
 
 @Injectable()
@@ -8,21 +8,19 @@ export class GroupService {
   constructor(@InjectModel('Group') private groupMongo: Model<GroupDocument>) {}
 
   async getGroups(): Promise<Group[]> {
-    const groupRes: Group[] = await this.groupMongo.find({});
-    return groupRes;
+    return await this.groupMongo.find({});
   }
 
-  async getGroup(name: string): Promise<Group | null> {
-    const groupRes: Group | null = await this.groupMongo.findOne({
-      name: name,
+  async getGroup(id: string): Promise<Group | null> {
+    return await this.groupMongo.findOne({
+      _id: id,
     });
-    return groupRes;
   }
 
   async isUserInGroup(groupId: string, userId: number): Promise<boolean> {
     const group: Group | null = await this.groupMongo.findById(groupId);
     if (!group) return false;
-    return group.users.includes(userId);
+    return group.users.map((user) => user.telegramId).includes(userId);
   }
 
   async getFirstEmptySlot(groupId: string): Promise<number | null> {
@@ -44,7 +42,7 @@ export class GroupService {
       throw new Error('Group not found or users array missing');
     }
 
-    const index = group.users.findIndex((u) => u === userId);
+    const index = group.users.findIndex((u) => u.telegramId === userId);
 
     if (index === -1) {
       console.log('User not found in group');
@@ -62,20 +60,25 @@ export class GroupService {
     console.log(res);
   }
 
-  async addUserToGroup(groupId: string, userId: number, kruger: boolean) {
+  async addUserToGroup(groupId: string, userId: number) {
     const group: Group | null = await this.groupMongo.findOne({ _id: groupId });
 
     if (!group) {
-      throw new Error('Group not found');
+      // throw new Error('Group not found');
+      return false;
     }
 
-    const users: (number | null)[] = group.users || [];
+    const users: (UserInGroup | null)[] = group.users || [];
 
     while (users.length < group.maxCountUsersInGroup) {
       users.push(null);
     }
 
-    if (users.includes(userId)) {
+    for(const u of users){
+      if(!u?.status && u?.date + )
+    }
+
+    if (users.map((u) => u?.telegramId).includes(userId)) {
       throw new Error('User already in group');
     }
 
@@ -85,25 +88,29 @@ export class GroupService {
       throw new Error('Group is full');
     }
 
-    if (emptyIndex > 19 && !kruger) {
-      throw new Error('Only for Kruger');
-    }
+    // if (emptyIndex > 19 && !kruger) {
+    //   throw new Error('Only for Kruger');
+    // }
 
     // Обновить только нужную ячейку
     const fieldPath = `users.${emptyIndex}`;
     const updateRes = await this.groupMongo.updateOne(
       { _id: groupId },
-      { $set: { [fieldPath]: userId } },
+      {
+        $set: {
+          [fieldPath]: { telegramId: userId, status: false, date: Date.now() },
+        },
+      },
     );
 
     console.log('User added at index', emptyIndex + 1);
     console.log(updateRes);
   }
 
-  async deleteGroup(name: string) {
-    const groupRes = await this.groupMongo.deleteOne({ name: name });
-    console.log(groupRes);
-  }
+  // async deleteGroup(name: string) {
+  //   const groupRes = await this.groupMongo.deleteOne({ name: name });
+  //   console.log(groupRes);
+  // }
 
   async createGroup(newGroup: Pick<Group, 'name' | 'promo' | 'aliance'>) {
     return await this.groupMongo.create({ ...newGroup });

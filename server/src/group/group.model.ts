@@ -1,5 +1,11 @@
 import * as mongoose from 'mongoose';
 
+export interface UserInGroup {
+  telegramId: number;
+  status: boolean;
+  date: number;
+}
+
 export const GroupSchema = new mongoose.Schema(
   {
     name: {
@@ -42,7 +48,7 @@ export interface Group {
   name: string;
   promo: string;
   aliance: string;
-  users: number[];
+  users: UserInGroup[];
   maxCountUsersInGroup: number;
   telegramGroup?: number;
   messageIdInTelegramGroup?: number;

@@ -19,6 +19,7 @@ import { AdminGuardAccess } from './botGuardAndMiddleware/access-control.guard';
       useFactory: (config: ConfigService, userService: UserService) => ({
         token: config.get<string>('BOT_TOKEN')!,
         middlewares: [accessControlMiddleware(userService)],
+        dropPendingUpdates: true,
       }),
     }),
     forwardRef(() => AppModule),

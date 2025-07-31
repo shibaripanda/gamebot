@@ -6,16 +6,18 @@ interface CreateNewGroupModalProps {
   newGroup: NewGroup;
   setNewGroup: React.Dispatch<React.SetStateAction<NewGroup>>;
   createNewGroup: any;
+  existGroupNames: string[];
 }
 
-export function CreateNewGroupModal({ newGroup, setNewGroup, createNewGroup }: CreateNewGroupModalProps) {
+export function CreateNewGroupModal({ newGroup, setNewGroup, createNewGroup, existGroupNames }: CreateNewGroupModalProps) {
   const [opened, { open, close }] = useDisclosure(false);
 
   return (
-    <Center style={{ margin: '10px' }}>
+    <>
       <Modal opened={opened} onClose={close} title="Создать группу">
         <Stack gap="sm">
-          <TextInput 
+          <TextInput
+            c={existGroupNames.includes(newGroup.name) ? 'red' : 'black'} 
             label="Название группы" 
             placeholder="Введите название группы"
             value={newGroup.name}
@@ -34,7 +36,9 @@ export function CreateNewGroupModal({ newGroup, setNewGroup, createNewGroup }: C
             onChange={(e) => setNewGroup(prev => ({ ...prev, aliance: e.target.value }))}
           />
           <Space h="sm" />
-          <Button onClick={
+          <Button
+           disabled={existGroupNames.includes(newGroup.name) || !newGroup.promo || !newGroup.aliance}
+           onClick={
             () => createNewGroup(close)
             }>
             Сохранить
@@ -42,9 +46,12 @@ export function CreateNewGroupModal({ newGroup, setNewGroup, createNewGroup }: C
         </Stack>
       </Modal>
 
-      <Button variant="default" onClick={open}>
-        Создать новую группу
+      <Button 
+      variant="default" 
+      onClick={open}
+      >
+        Создать группу
       </Button>
-    </Center>
+      </>
   );
 }
