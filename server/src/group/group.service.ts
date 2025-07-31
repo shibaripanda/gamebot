@@ -74,9 +74,9 @@ export class GroupService {
       users.push(null);
     }
 
-    for(const u of users){
-      if(!u?.status && u?.date + )
-    }
+    // for(const u of users){
+    //   if(!u?.status && u?.date + )
+    // }
 
     if (users.map((u) => u?.telegramId).includes(userId)) {
       throw new Error('User already in group');
