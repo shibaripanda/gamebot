@@ -4,6 +4,10 @@ export interface UserInGroup {
   telegramId: number;
   status: boolean;
   date: number;
+  gameName: string;
+  email: string;
+  password: string;
+  anonName: string;
 }
 
 export const GroupSchema = new mongoose.Schema(
@@ -48,7 +52,7 @@ export interface Group {
   name: string;
   promo: string;
   aliance: string;
-  users: UserInGroup[];
+  users: (UserInGroup | null)[];
   maxCountUsersInGroup: number;
   telegramGroup?: number;
   messageIdInTelegramGroup?: number;

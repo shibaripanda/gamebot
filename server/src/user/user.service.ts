@@ -9,6 +9,10 @@ export class UserService {
 
   admins: number[] = [599773731];
 
+  async addRegData(userId: number, field: string, data: string) {
+    await this.userMongo.updateOne({ id: userId }, { [field]: data });
+  }
+
   async getUser(userId: number) {
     const userRes: User | null = await this.userMongo.findOne({ id: userId });
     return userRes;

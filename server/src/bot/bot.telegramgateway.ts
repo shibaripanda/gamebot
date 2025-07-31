@@ -1,6 +1,6 @@
 import {
   CallbackQuery,
-  // Message,
+  Message,
   Update as UpdateTelegraf,
 } from '@telegraf/types';
 import { BotService } from './bot.service';
@@ -9,7 +9,7 @@ import {
   Command,
   Ctx,
   // Hears,
-  // On,
+  On,
   Start,
   Update,
 } from 'nestjs-telegraf';
@@ -66,6 +66,18 @@ export class TelegramGateway {
   //   await ctx.reply(`✅ Группа "${groupName}" успешно создана.`);
   // }
 
+  @Action('reg_gameName')
+  async secondStepInSide(@Ctx() ctx: UserTelegrafContext) {
+    console.log('@Action secondStepInSide');
+    await this.userService.addRegData(
+      ctx.from.id,
+      'next_step_data',
+      'reg_gameName',
+    );
+    await this.botService.askGameName(ctx.from.id);
+    await ctx.answerCbQuery();
+  }
+
   @Action('takePlace')
   async takePlace(@Ctx() ctx: UserTelegrafContext) {
     console.log('@Action takePlace');
@@ -114,6 +126,37 @@ export class TelegramGateway {
     console.log('@Start');
     await this.userService.createUserOrUpdateUser(ctx.from);
     await this.botService.startMessage(ctx.from.id);
+  }
+
+  @On('text')
+  async addRegData(@Ctx() ctx: UserTelegrafContext) {
+    const user = await this.userService.getUser(ctx.from.id);
+    const message = ctx.message as Message.TextMessage;
+    if (user && user.next_step_data && user.reg_groupId) {
+      await this.userService.addRegData(
+        ctx.from.id,
+        user.next_step_data,
+        message.text,
+      );
+      if (user.next_step_data === 'reg_gameName') {
+        await this.userService.addRegData(
+          ctx.from.id,
+          'next_step_data',
+          'reg_email',
+        );
+        await this.botService.askEmail(ctx.from.id);
+      } else if (user.next_step_data === 'reg_email') {
+        await this.userService.addRegData(
+          ctx.from.id,
+          'next_step_data',
+          'reg_password',
+        );
+        await this.botService.askPassword(ctx.from.id);
+      } else if (user.next_step_data === 'reg_password') {
+        await this.botService.confirmation(ctx.from.id);
+      }
+    }
+    console.log(await this.userService.getUser(ctx.from.id));
   }
 
   // @On('chat_member')
