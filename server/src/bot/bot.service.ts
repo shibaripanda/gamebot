@@ -2,11 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectBot } from 'nestjs-telegraf';
 import { DataNewReg } from 'src/app/interfaces/dataNewReg';
-// import { Group } from 'src/group/group.model';
-// import { Group } from 'src/group/group.model';
+import { Group } from 'src/group/group.model';
 import { GroupService } from 'src/group/group.service';
-// import { User } from 'src/user/user.model';
-// import { User } from 'src/user/user.model';
 import { UserService } from 'src/user/user.service';
 import { Telegraf } from 'telegraf';
 
@@ -172,32 +169,67 @@ export class BotService {
     );
   }
 
-  // async getListUsersOfGroup(groupName: string) {
-  //   const group: Group | null = await this.groupService.getGroup(groupName);
-  //   const resList: { index: number; gameName: string }[] = [];
+  async getListUsersOfGroup(groupId: string): Promise<string> {
+    const group: Group | null = await this.groupService.getGroup(groupId);
+    if (!group) return 'Ошибка';
+
+    const users = group.users || [];
+    const total = group.maxCountUsersInGroup || users.length;
+    const filledUsers = [...users];
+
+    while (filledUsers.length < total) {
+      filledUsers.push(null);
+    }
+
+    const filledCount = filledUsers.filter((u) => u?.status).length;
+
+    // Батарея — снизу вверх
+    const battery: string[] = [];
+    for (let i = 0; i < total; i++) {
+      battery.push(i < filledCount ? '🔋' : '🪫');
+    }
+    battery.reverse();
+
+    // Пользователи
+    const userLines: string[] = [];
+    let step = 1;
+    for (const user of filledUsers) {
+      const label = user?.status
+        ? `🚀 <b>${step}: ${user.anonName}</b>`
+        : `➖ <b>${step}: </b>---------------`;
+      userLines.push(label);
+      step++;
+    }
+
+    // Объединение с разделителем │
+    const combinedLines = battery.map((b, i) => `${b} │ ${userLines[i]}`);
+
+    const header = `${group.name}\n🔸🔸🔸🔸🔸🔸🔸🔸\n🔸${group.promo}\n🔸🔸🔸🔸🔸🔸🔸🔸\n\n`;
+    const body = combinedLines.join('\n');
+    return `${header}${body}`;
+  }
+
+  // async getListUsersOfGroup(groupId: string): Promise<string> {
+  //   const group: Group | null = await this.groupService.getGroup(groupId);
+  //   let step = 1;
   //   if (group) {
+  //     let list = `${group.name}\n🔸🔸🔸🔸🔸🔸🔸🔸\n🔸${group.promo}\n🔸🔸🔸🔸🔸🔸🔸🔸\n`;
   //     for (const user of group.users) {
-  //       if (user) {
-  //         const currentUser: User | null = await this.userService.getUser(user);
-  //         if (currentUser) {
-  //           resList.push({
-  //             index: group.users.indexOf(user) + 1,
-  //             gameName: currentUser.gameName,
-  //           });
-  //         }
+  //       if (user && user.status) {
+  //         list = list + `🔋 <b>${step}: ` + user.anonName + '</b> 🚀\n';
   //       } else {
-  //         resList.push({
-  //           index: group.users.indexOf(user) + 1,
-  //           gameName: '--',
-  //         });
+  //         list = list + `🪫<b>${step}: </b>` + '---' + '\n';
   //       }
+  //       step++;
   //     }
+  //     return list;
   //   }
-  //   return resList;
+  //   return 'Ошибка';
   // }
 
   async confirmUserInGroup(userId: number) {
-    const res: any = await this.groupService.confirmUserInGroup(userId);
+    const res: DataNewReg | null =
+      await this.groupService.confirmUserInGroup(userId);
     console.log(res, 'тут');
     await this.userService.cleaeRegData(userId);
     if (!res) {
@@ -223,13 +255,61 @@ export class BotService {
       `😊 @${res.username}`,
       `🪪 <code>${res.promo}</code>`,
       `🥸 <code>${res.anonName}</code>`,
-      `🎮 <code>${res.reg_gameName}</code>`,
-      `📧 <code>${res.reg_email}</code>`,
-      `🔒 <code>${res.reg_password}</code>`,
+      `🎮 <code>${res.gameName}</code>`,
+      `📧 <code>${res.email}</code>`,
+      `🔒 <code>${res.password}</code>`,
     ].join('\n');
-    await this.bot.telegram.sendMessage(-1001639457688, message, {
-      parse_mode: 'HTML',
-    });
+    await this.bot.telegram.sendMessage(
+      this.config.get<number>('GROUP_TELEGRAM_CLOSE')!,
+      message,
+      {
+        parse_mode: 'HTML',
+      },
+    );
+    const list = await this.getListUsersOfGroup(res.groupId);
+    if (!res.messageIdInTelegramGroup) {
+      await this.sendMessageToGroup(list, res.groupId);
+      // const message = await this.bot.telegram.sendMessage(
+      //   this.config.get<number>('GROUP_TELEGRAM_OPEN')!,
+      //   list,
+      //   { parse_mode: 'HTML' },
+      // );
+      // await this.groupService.updateMessageIdGroup(
+      //   res.groupId,
+      //   message.message_id,
+      // );
+      // return;
+    }
+    await this.bot.telegram
+      .editMessageText(
+        this.config.get<number>('GROUP_TELEGRAM_OPEN'),
+        res.messageIdInTelegramGroup,
+        undefined,
+        list,
+        { parse_mode: 'HTML' },
+      )
+      .catch(async (error) => {
+        if (
+          error instanceof Error &&
+          'response' in error &&
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          (error as any).response?.error_code === 400
+        ) {
+          await this.sendMessageToGroup(list, res.groupId);
+        } else {
+          throw error; // другие ошибки пробрасываем
+        }
+      });
+  }
+
+  async sendMessageToGroup(list: string, groupId: string) {
+    const message = await this.bot.telegram.sendMessage(
+      this.config.get<number>('GROUP_TELEGRAM_OPEN')!,
+      list,
+      { parse_mode: 'HTML' },
+    );
+    await this.groupService.updateMessageIdGroup(groupId, message.message_id);
+    return;
   }
 
   async getGroupsButtonsList(userId: number) {

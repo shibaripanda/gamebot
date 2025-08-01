@@ -4,6 +4,7 @@ import { Group, GroupDocument, UserInGroup } from './group.model';
 import { Model } from 'mongoose';
 import { UserService } from 'src/user/user.service';
 import { ConfigService } from '@nestjs/config';
+import { DataNewReg } from 'src/app/interfaces/dataNewReg';
 
 @Injectable()
 export class GroupService {
@@ -12,6 +13,13 @@ export class GroupService {
     private userService: UserService,
     private readonly config: ConfigService,
   ) {}
+
+  async updateMessageIdGroup(groupId: string, messageId: number) {
+    await this.groupMongo.updateOne(
+      { _id: groupId },
+      { messageIdInTelegramGroup: messageId },
+    );
+  }
 
   async addUserToGroup(groupId: string, userId: number): Promise<boolean> {
     // Очистка просроченных пользователей
@@ -55,14 +63,18 @@ export class GroupService {
     return result.modifiedCount > 0;
   }
 
-  async confirmUserInGroup(userId: number): Promise<
-    | (UserInGroup & {
-        username?: string;
-        promo: string;
-        name: string;
-      })
-    | null
-  > {
+  getRandomSmile(): string {
+    const smiles = `🐶🐱🐭🐹🐰🦊🐻🐼🐻‍❄️🙈🐵🐸🐽🐷🐮🦁🐯🐨🙉🙊🐒🐔🐧🐦🐤🐣🐥🐴🐗🐺🦇🦉🦅🐦‍⬛️🦆🪿🦄🫎🐝🪱🐛🦋🐌🐞🐜🐢🦂🕸🕷🦗🦟🪳🪲🪰🐍🦎🦖🦕🐙🦑🪼🦐🦞🦭🦈🐋🐳🐬🐟🐠🐡🦀🐊🐅🐆🦓🦍🦧🦣🐘🦛🐄🐂🐃🦬🦘🦒🐫🐪🦏🫏🐎🐖🐏🐑🦙🐐🦌🐕🦃🐓🐈‍⬛🐈🐕‍🦺🦮🐩🦤🦚🦜🦢🦩🕊🐇🦝🦨🦨🦝🐇🕊🦩🦢🦜🦚🦤🦡🦫🦦🦥🐁🐀🐿🦔`;
+    const emojis = Array.from(smiles);
+    const randomIndex = Math.floor(Math.random() * emojis.length);
+    return emojis[randomIndex];
+  }
+
+  getRandomTwoDigitNumber(): number {
+    return Math.floor(Math.random() * 90) + 10;
+  }
+
+  async confirmUserInGroup(userId: number): Promise<DataNewReg | null> {
     const user = await this.userService.getUser(userId);
     if (!user) return null;
 
@@ -77,7 +89,8 @@ export class GroupService {
 
     if (targetIndex === -1) return null;
 
-    const anonName = `Аноним${targetIndex}`;
+    const anonName =
+      `Аноним${this.getRandomTwoDigitNumber()}` + this.getRandomSmile();
     const fieldPath = `users.${targetIndex}`;
 
     const updateRes = await this.groupMongo.updateOne(
@@ -85,9 +98,9 @@ export class GroupService {
       {
         $set: {
           [`${fieldPath}.status`]: true,
-          [`${fieldPath}.reg_gameName`]: user.reg_gameName,
-          [`${fieldPath}.reg_email`]: user.reg_email,
-          [`${fieldPath}.reg_password`]: user.reg_password,
+          [`${fieldPath}.gameName`]: user.reg_gameName,
+          [`${fieldPath}.email`]: user.reg_email,
+          [`${fieldPath}.password`]: user.reg_password,
           [`${fieldPath}.anonName`]: anonName,
         },
       },
@@ -97,94 +110,25 @@ export class GroupService {
 
     const updatedGroup = await this.groupMongo.findById(user.reg_groupId);
     const updatedUser = updatedGroup?.users?.[targetIndex];
+    console.log(updatedUser, 'ssssssssssssss');
 
     if (!updatedUser) return null;
 
     return {
-      ...updatedUser,
+      groupId: group._id,
+      messageIdInTelegramGroup: updatedGroup.messageIdInTelegramGroup,
+      telegramGroup: updatedGroup.telegramGroup,
+      status: updatedUser.status,
+      date: updatedUser.date,
+      anonName: anonName,
+      email: updatedUser.email,
+      gameName: updatedUser.gameName,
+      password: updatedUser.password,
       username: user.username,
       promo: updatedGroup.promo,
       name: updatedGroup.name,
     };
   }
-
-  // async confirmUserInGroup(userId: number): Promise<string | null> {
-  //   const user = await this.userService.getUser(userId);
-  //   if (
-  //     !user ||
-  //     !user.reg_groupId ||
-  //     !user.reg_email ||
-  //     !user.reg_gameName ||
-  //     !user.reg_password
-  //   )
-  //     return null;
-
-  //   const group = await this.groupMongo.findById(user.reg_groupId);
-  //   if (!group) return null;
-
-  //   const users: (UserInGroup | null)[] = group.users || [];
-
-  //   const targetIndex = users.findIndex(
-  //     (u) => u?.telegramId === userId && u.status === false,
-  //   );
-
-  //   if (targetIndex === -1) return null;
-
-  //   const anonName = `Аноним${targetIndex}`;
-  //   const fieldPath = `users.${targetIndex}`;
-
-  //   const updateRes = await this.groupMongo.updateOne(
-  //     { _id: user.reg_groupId },
-  //     {
-  //       $set: {
-  //         [`${fieldPath}.status`]: true,
-  //         [`${fieldPath}.reg_gameName`]: user.reg_gameName,
-  //         [`${fieldPath}.reg_email`]: user.reg_email,
-  //         [`${fieldPath}.reg_password`]: user.reg_password,
-  //         [`${fieldPath}.anonName`]: anonName,
-  //       },
-  //     },
-  //   );
-
-  //   return updateRes.modifiedCount > 0 ? anonName : null;
-  // }
-
-  // async confirmUserInGroup(userId: number): Promise<UserInGroup | null> {
-  //   const user = await this.userService.getUser(userId);
-  //   if (!user) return null;
-
-  //   const group = await this.groupMongo.findById(user.reg_groupId);
-  //   if (!group) return null;
-
-  //   const users: (UserInGroup | null)[] = group.users || [];
-
-  //   const targetIndex = users.findIndex(
-  //     (u) => u?.telegramId === userId && u.status === false,
-  //   );
-
-  //   if (targetIndex === -1) return null;
-
-  //   const anonName = `anon${targetIndex}`;
-  //   const fieldPath = `users.${targetIndex}`;
-
-  //   const updateRes = await this.groupMongo.updateOne(
-  //     { _id: user.reg_groupId },
-  //     {
-  //       $set: {
-  //         [`${fieldPath}.status`]: true,
-  //         [`${fieldPath}.reg_gameName`]: user.reg_gameName,
-  //         [`${fieldPath}.reg_email`]: user.reg_email,
-  //         [`${fieldPath}.reg_password`]: user.reg_password,
-  //         [`${fieldPath}.anonName`]: anonName,
-  //       },
-  //     },
-  //   );
-
-  //   if (updateRes.modifiedCount === 0) return null;
-
-  //   const updatedGroup = await this.groupMongo.findById(user.reg_groupId);
-  //   return updatedGroup?.users?.[targetIndex] || null;
-  // }
 
   async getGroups(): Promise<Group[]> {
     const groups = await this.groupMongo.find();
@@ -249,34 +193,6 @@ export class GroupService {
 
     return users;
   }
-
-  // private async clearExpiredUsers(
-  //   groupId: string,
-  // ): Promise<(UserInGroup | null)[]> {
-  //   const group = await this.groupMongo.findById(groupId);
-  //   console.log(group);
-  //   if (!group) return [];
-
-  //   const users: (UserInGroup | null)[] = group.users || [];
-
-  //   while (users.length < group.maxCountUsersInGroup) {
-  //     users.push(null);
-  //   }
-  //   const updates: Record<string, null> = {};
-
-  //   users.forEach((user, index) => {
-  //     if (user && !user.status && user.date + 600_000 < Date.now()) {
-  //       updates[`users.${index}`] = null;
-  //       users[index] = null; // локально очищаем
-  //     }
-  //   });
-
-  //   if (Object.keys(updates).length > 0) {
-  //     await this.groupMongo.updateOne({ _id: groupId }, { $set: updates });
-  //   }
-
-  //   return users;
-  // }
 
   async createGroup(newGroup: Pick<Group, 'name' | 'promo' | 'aliance'>) {
     return await this.groupMongo.create({

@@ -2,81 +2,57 @@ import { useState } from 'react';
 import cx from 'clsx';
 import { Avatar, Button, Checkbox, Group, ScrollArea, Space, Table, Text } from '@mantine/core';
 import classes from './GroupTable.module.css';
-import { User } from '../../pages/dashboardPage/interfaces/user';
-
-const data = [
-  {
-    _id: '1',
-    avatar:
-      'https://raw.githubusercontent.com/mantinedev/mantine/master/.demo/avatars/avatar-1.png',
-    gameName: 'Robert Wolfkisser',
-    email: 'rob_wolf@gmail.com',
-    username: '@ssfsfsfs'
-  },
-  {
-    _id: '2',
-    avatar:
-      'https://raw.githubusercontent.com/mantinedev/mantine/master/.demo/avatars/avatar-7.png',
-    gameName: 'Jill Jailbreaker',
-    email: 'jj@breaker.com',
-    username: '@ssfsfsfs'
-  },
-  {
-    _id: '3',
-    avatar:
-      'https://raw.githubusercontent.com/mantinedev/mantine/master/.demo/avatars/avatar-2.png',
-    gameName: 'Henry Silkeater',
-    email: 'henry@silkeater.io',
-    username: '@ssfsfsfs'
-  },
-  {
-    _id: '4',
-    avatar:
-      'https://raw.githubusercontent.com/mantinedev/mantine/master/.demo/avatars/avatar-3.png',
-    gameName: 'Bill Horsefighter',
-    email: 'bhorsefighter@gmail.com',
-    username: '@ssfsfsfs'
-  },
-  {
-    _id: '5',
-    avatar:
-      'https://raw.githubusercontent.com/mantinedev/mantine/master/.demo/avatars/avatar-10.png',
-    gameName: 'Jeremy Footviewer',
-    email: 'jeremy@foot.dev',
-    username: '@ssfsfsfs'
-  },
-];
+import { RegUser } from '../../pages/dashboardPage/interfaces/user';
 
 interface UserProps {
-  users: User[];
+  users: RegUser[];
 }
 
 export function GroupTable({users}: UserProps) {
   const [selection, setSelection] = useState<string[]>([]);
+
+  function formatDateOrTime(input: Date | string | number): string {
+  const date = new Date(input);
+  const now = new Date();
+
+  const isToday =
+    date.getDate() === now.getDate() &&
+    date.getMonth() === now.getMonth() &&
+    date.getFullYear() === now.getFullYear();
+
+  return isToday
+    ? date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+    : date.toLocaleDateString('ru-RU');
+}
   const toggleRow = (id: string) =>
     setSelection((current) =>
       current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
     );
   const toggleAll = () =>
-    setSelection((current) => (current.length === data.length ? [] : data.map((item) => item._id)));
+    setSelection((current) => (current.length === users.length ? [] : users.map((item) => item.anonName)));
 
-  const rows = data.map((item) => {
-    const selected = selection.includes(item._id);
+  const rows = users.map((item) => {
+    const selected = selection.includes(item.anonName);
     return (
-      <Table.Tr key={item._id} className={cx({ [classes.rowSelected]: selected })}>
+      <Table.Tr key={item.anonName} className={cx({ [classes.rowSelected]: selected })}>
         <Table.Td>
-          <Checkbox checked={selection.includes(item._id)} onChange={() => toggleRow(item._id)} />
+          <Checkbox checked={selection.includes(item.anonName)} onChange={() => toggleRow(item.anonName)} />
         </Table.Td>
         <Table.Td>
           <Group gap="sm">
-            <Avatar size={26} src={item.avatar} radius={26} />
+            <Avatar size={26} radius={26}>
+              {item.anonName[item.anonName.length - 1]}
+            </Avatar>
             <Text size="sm" fw={500}>
-              {item.gameName}
+              {item.anonName}
             </Text>
           </Group>
         </Table.Td>
+        <Table.Td>{item.gameName}</Table.Td>
         <Table.Td>{item.email}</Table.Td>
-        <Table.Td>{item.username}</Table.Td>
+        <Table.Td>{item.password}</Table.Td>
+        {/* <Table.Td>{item.status}</Table.Td> */}
+        <Table.Td>{formatDateOrTime(item.date)}</Table.Td>
       </Table.Tr>
     );
   });
@@ -84,7 +60,7 @@ export function GroupTable({users}: UserProps) {
   return (
     <ScrollArea>
 
-        <Group justify="center">
+        <Group justify="flex-end">
             <Button>Button 1</Button>
             <Button>Button 2</Button>  
             <Button>Button 3</Button>  
@@ -98,13 +74,17 @@ export function GroupTable({users}: UserProps) {
                 <Table.Th w={40}>
                 <Checkbox
                     onChange={toggleAll}
-                    checked={selection.length === data.length}
-                    indeterminate={selection.length > 0 && selection.length !== data.length}
+                    checked={selection.length === users.length}
+                    indeterminate={selection.length > 0 && selection.length !== users.length}
                 />
                 </Table.Th>
+                <Table.Th>Anon Name</Table.Th>
                 <Table.Th>Game Name</Table.Th>
                 <Table.Th>Email</Table.Th>
-                <Table.Th>Telegram username</Table.Th>
+                <Table.Th>Password</Table.Th>
+                {/* <Table.Th>Username</Table.Th> */}
+                {/* <Table.Th>Status</Table.Th> */}
+                <Table.Th>Date</Table.Th>
             </Table.Tr>
             </Table.Thead>
             <Table.Tbody>{rows}</Table.Tbody>
