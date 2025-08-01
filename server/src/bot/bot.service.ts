@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectBot } from 'nestjs-telegraf';
+import { DataNewReg } from 'src/app/interfaces/dataNewReg';
 // import { Group } from 'src/group/group.model';
 // import { Group } from 'src/group/group.model';
 import { GroupService } from 'src/group/group.service';
@@ -27,6 +28,7 @@ export class BotService {
     }
     const res = await this.groupService.addUserToGroup(groupId, userId);
     if (!res) {
+      console.log('soldOut');
       await this.soldOutMessage(userId);
       return;
     }
@@ -54,7 +56,14 @@ export class BotService {
 
   async confirmation(userId: number) {
     const user = await this.userService.getUser(userId);
-    if (!user || !user.reg_groupId) return;
+    if (
+      !user ||
+      !user.reg_groupId ||
+      !user.reg_email ||
+      !user.reg_gameName ||
+      !user.reg_password
+    )
+      return;
 
     const group = await this.groupService.getGroup(user.reg_groupId);
     if (!group) return;
@@ -69,8 +78,9 @@ export class BotService {
     ].join('\n');
 
     const buttons = [
-      [{ text: '✅ Всё верно', callback_data: 'succssesRegistrtion' }],
-      [{ text: '✏️ Надо исправить', callback_data: 'reg_gameName' }],
+      [{ text: '✅ Всё верно?', callback_data: 'succssesRegistrtion' }],
+      // [{ text: '✏️ Надо исправить', callback_data: 'reg_gameName' }],
+      [{ text: '✏️ Надо исправить', callback_data: 'takePlace' }],
     ];
 
     await this.bot.telegram.sendMessage(userId, message, {
@@ -78,37 +88,8 @@ export class BotService {
     });
   }
 
-  // async confirmation(userId: number) {
-  //   const buttons = [
-  //     [{ text: 'Все верно', callback_data: 'succssesRegistrtion' }],
-  //     [{ text: 'Надо исправить', callback_data: 'reg_gameName' }],
-  //   ];
-  //   const user: User | null = await this.userService.getUser(userId);
-  //   if (user) {
-  //     if (user.reg_groupId) {
-  //       const group: Group | null = await this.groupService.getGroup(
-  //         user.reg_groupId,
-  //       );
-  //       if (group) {
-  //         await this.bot.telegram.sendMessage(
-  //           userId,
-  //           `Почти готово! Давайте проверим ваши данные\n${group.promo}\n${user.reg_gameName}\n${user.reg_email}\n${user.reg_password}`,
-  //           {
-  //             reply_markup: {
-  //               inline_keyboard: buttons,
-  //             },
-  //           },
-  //         );
-  //       }
-  //     }
-  //   }
-  // }
-
   async askPassword(userId: number) {
-    const buttons = [
-      // [{ text: 'Все верно', callback_data: 'succssesRegistrtion' }],
-      // [{ text: 'Надо исправить', callback_data: 'reg_gameName' }],
-    ];
+    const buttons = [];
     await this.bot.telegram.sendMessage(
       userId,
       `Теперь напишите пароль от почты что вы ввели`,
@@ -121,9 +102,7 @@ export class BotService {
   }
 
   async askEmail(userId: number) {
-    const buttons = [
-      // [{ text: 'Надо исправить', callback_data: 'secondStepInSide' }],
-    ];
+    const buttons = [];
     await this.bot.telegram.sendMessage(
       userId,
       `Теперь напишите почту вашего аккаунта`,
@@ -136,9 +115,7 @@ export class BotService {
   }
 
   async askGameName(userId: number) {
-    const buttons = [
-      // [{ text: 'Надо исправить', callback_data: 'secondStepInSide' }],
-    ];
+    const buttons = [];
     await this.bot.telegram.sendMessage(
       userId,
       `Супер! Пора заполнить ваши данные. Напишите ваше имя в игре`,
@@ -219,17 +196,80 @@ export class BotService {
   //   return resList;
   // }
 
+  async confirmUserInGroup(userId: number) {
+    const res: any = await this.groupService.confirmUserInGroup(userId);
+    console.log(res, 'тут');
+    await this.userService.cleaeRegData(userId);
+    if (!res) {
+      return;
+    }
+    const buttons = [
+      [{ text: 'Чат закупок', callback_data: '!!!!!!!!!!' }],
+      [{ text: 'В начало', callback_data: 'mainMenu' }],
+    ];
+    await this.bot.telegram.sendMessage(
+      userId,
+      `Поздравляю! Вы записались в группу! Реквизиты для оплаты и название альянса придет сюда как только заполнится группа. За ходом записи вы можете следить в чате закупки. Ваше кодовое имя <b>${res.anonName}</b>`,
+      {
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: buttons,
+        },
+      },
+    );
+    const message = [
+      `Регистрация: <code>${res.name}</code>`,
+      '',
+      `😊 @${res.username}`,
+      `🪪 <code>${res.promo}</code>`,
+      `🥸 <code>${res.anonName}</code>`,
+      `🎮 <code>${res.reg_gameName}</code>`,
+      `📧 <code>${res.reg_email}</code>`,
+      `🔒 <code>${res.reg_password}</code>`,
+    ].join('\n');
+    await this.bot.telegram.sendMessage(-1001639457688, message, {
+      parse_mode: 'HTML',
+    });
+  }
+
   async getGroupsButtonsList(userId: number) {
     const allGroups = await this.groupService.getGroups();
-    const buttons = allGroups.map((gr) => [
-      {
-        text:
-          gr.promo +
-          ' ' +
-          `(${gr.users.filter((u) => u).length}/${gr.maxCountUsersInGroup})`,
-        callback_data: 'reservPlaceInGroup:' + gr._id,
-      },
-    ]);
+    const buttons = allGroups.map((gr) => {
+      const total = gr.maxCountUsersInGroup;
+
+      const allFilled = gr.users.filter((u) => u !== null);
+      const actualFilled = allFilled.length;
+
+      const hasReserved = gr.users.some(
+        (u) => u?.telegramId === userId && u.status === false,
+      );
+
+      const displayedCount = hasReserved
+        ? Math.max(actualFilled - 1, 0)
+        : actualFilled;
+
+      // Успешные регистрации пользователя
+      const confirmedRegs = gr.users.filter(
+        (u) => u?.telegramId === userId && u.status === true,
+      );
+
+      let suffix = '';
+      if (confirmedRegs.length > 0) {
+        suffix =
+          confirmedRegs.length === 1 ? ' 😊' : ` 😊×${confirmedRegs.length}`;
+      }
+
+      if (hasReserved) {
+        suffix += ' ⏳';
+      }
+
+      return [
+        {
+          text: `${gr.promo} (${displayedCount}/${total})${suffix}`,
+          callback_data: 'reservPlaceInGroup:' + gr._id,
+        },
+      ];
+    });
     buttons.push([
       { text: 'Обновить', callback_data: 'takePlace' },
       { text: 'В начало', callback_data: 'mainMenu' },

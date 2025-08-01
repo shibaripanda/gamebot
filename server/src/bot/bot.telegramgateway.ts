@@ -66,6 +66,14 @@ export class TelegramGateway {
   //   await ctx.reply(`✅ Группа "${groupName}" успешно создана.`);
   // }
 
+  @Command('enter')
+  @UseGuards(AdminGuardAccess)
+  async getAuthLink(@Ctx() ctx: Context) {
+    if (ctx && ctx.from) {
+      await ctx.reply(this.appService.getAuthLink(ctx.from.id));
+    }
+  }
+
   @Action('reg_gameName')
   async secondStepInSide(@Ctx() ctx: UserTelegrafContext) {
     console.log('@Action secondStepInSide');
@@ -87,7 +95,7 @@ export class TelegramGateway {
 
   @Action(/^reservPlaceInGroup:(.+)$/)
   async takePlaceInGroup(@Ctx() ctx: Context) {
-    console.log('@Action takePlace');
+    console.log('@Action reservPlaceInGroup');
     if (ctx.from) {
       const callbackQuery = ctx.callbackQuery as CallbackQuery.DataQuery;
       const match = callbackQuery.data.match(/^reservPlaceInGroup:(.+)$/);
@@ -121,6 +129,13 @@ export class TelegramGateway {
     await ctx.answerCbQuery();
   }
 
+  @Action('succssesRegistrtion')
+  async succssesRegistrtion(@Ctx() ctx: UserTelegrafContext) {
+    console.log('@Action succssesRegistrtion');
+    await this.botService.confirmUserInGroup(ctx.from.id);
+    await ctx.answerCbQuery();
+  }
+
   @Start()
   async start(@Ctx() ctx: UserTelegrafContext) {
     console.log('@Start');
@@ -133,10 +148,21 @@ export class TelegramGateway {
     const user = await this.userService.getUser(ctx.from.id);
     const message = ctx.message as Message.TextMessage;
     if (user && user.next_step_data && user.reg_groupId) {
+      if (user.next_step_data === 'reg_email') {
+        const email = message.text;
+
+        const isValidEmail =
+          typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+        if (!isValidEmail) {
+          await ctx.reply('⚠️ Попробуй еще раз, некоретный email');
+          return false;
+        }
+      }
       await this.userService.addRegData(
         ctx.from.id,
         user.next_step_data,
-        message.text,
+        message.text.slice(0, 100),
       );
       if (user.next_step_data === 'reg_gameName') {
         await this.userService.addRegData(
@@ -207,14 +233,6 @@ export class TelegramGateway {
     console.log('Access close');
     if (ctx.from) {
       await this.botService.sendTextMessage(ctx.from.id, 'Доступ закрыт');
-    }
-  }
-
-  @Command('enter')
-  @UseGuards(AdminGuardAccess)
-  async getAuthLink(@Ctx() ctx: Context) {
-    if (ctx && ctx.from) {
-      await ctx.reply(this.appService.getAuthLink(ctx.from.id));
     }
   }
 }

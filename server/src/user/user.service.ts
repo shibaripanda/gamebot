@@ -13,6 +13,19 @@ export class UserService {
     await this.userMongo.updateOne({ id: userId }, { [field]: data });
   }
 
+  async cleaeRegData(userId: number) {
+    return await this.userMongo.findOneAndUpdate(
+      { id: userId },
+      {
+        reg_gameName: '',
+        reg_email: '',
+        reg_password: '',
+        reg_groupId: '',
+      },
+      { returnDocument: 'after' },
+    );
+  }
+
   async getUser(userId: number) {
     const userRes: User | null = await this.userMongo.findOne({ id: userId });
     return userRes;
