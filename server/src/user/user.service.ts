@@ -9,6 +9,8 @@ export class UserService {
 
   admins: number[] = [599773731];
 
+  //313838574 494257350
+
   async addRegData(userId: number, field: string, data: string) {
     await this.userMongo.updateOne({ id: userId }, { [field]: data });
   }

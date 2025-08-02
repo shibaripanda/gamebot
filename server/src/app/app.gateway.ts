@@ -12,6 +12,8 @@ import { SocketAuthMiddleware } from 'src/app/auth-guards/socket-auth.middleware
 import { WsJwtAuthGuard } from './auth-guards/socket-auth.guard';
 import { GroupService } from 'src/group/group.service';
 import { Group } from 'src/group/group.model';
+import { EditRegUsers } from './interfaces/editRegUsers';
+import { BotService } from 'src/bot/bot.service';
 
 @WebSocketGateway({
   cors: {
@@ -24,6 +26,7 @@ export class AppGateway
   constructor(
     private readonly socketAuthMiddleware: SocketAuthMiddleware,
     private groupService: GroupService,
+    private botService: BotService,
   ) {}
   @WebSocketServer()
   server: Server;
@@ -49,6 +52,35 @@ export class AppGateway
 
   handleDisconnect(client: Socket) {
     this.logger.log(`Client disconnected: ${client.id}`);
+  }
+
+  @SubscribeMessage('editRegUsers')
+  @UseGuards(WsJwtAuthGuard)
+  async handleEditRegUsers(
+    client: Socket,
+    payload: EditRegUsers,
+  ): Promise<any> {
+    console.log(payload);
+    let res: Group | null = null;
+    if (payload.action === 'Delete') {
+      res = await this.groupService.deleteUsersInGroupAndSetNull(
+        payload.groupId,
+        payload.idRegUsersForDelete,
+      );
+    } else if (payload.action === 'Confirm') {
+      res = await this.groupService.confirmUsersInGroup(
+        payload.groupId,
+        payload.idRegUsersForDelete,
+      );
+    }
+    if (res) {
+      await this.botService.sendOrUpdateMessage(
+        res._id,
+        res.messageIdInTelegramGroup,
+      );
+      return { success: true, message: 'Подтверждено', group: res };
+    }
+    return { success: false, message: 'Ошибка' };
   }
 
   @SubscribeMessage('getGroups')

@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Group, GroupDocument, UserInGroup } from './group.model';
+import {
+  Group,
+  GroupDocument,
+  UserInGroup,
+  UserInGroupDocument,
+} from './group.model';
 import { Model } from 'mongoose';
 import { UserService } from 'src/user/user.service';
 import { ConfigService } from '@nestjs/config';
@@ -10,9 +15,65 @@ import { DataNewReg } from 'src/app/interfaces/dataNewReg';
 export class GroupService {
   constructor(
     @InjectModel('Group') private groupMongo: Model<GroupDocument>,
+    @InjectModel('UserInGroup')
+    private userInGroupMongo: Model<UserInGroupDocument>,
     private userService: UserService,
     private readonly config: ConfigService,
   ) {}
+
+  async confirmUsersInGroup(
+    groupId: string,
+    userInGroupIds: string[],
+  ): Promise<Group | null> {
+    const group = await this.groupMongo.findById(groupId);
+    if (!group) return null;
+
+    const updates: Record<string, boolean> = {};
+
+    group.users.forEach((u, index) => {
+      if (u && userInGroupIds.includes(u._id.toString())) {
+        updates[`users.${index}.confirmation`] = true;
+      }
+    });
+
+    if (Object.keys(updates).length === 0) return null;
+
+    const result = await this.groupMongo.updateOne(
+      { _id: groupId },
+      { $set: updates },
+    );
+
+    if (result.modifiedCount === 0) return null;
+
+    return this.groupMongo.findById(groupId);
+  }
+
+  async deleteUsersInGroupAndSetNull(
+    groupId: string,
+    userInGroupIds: string[],
+  ): Promise<Group | null> {
+    const group = await this.groupMongo.findById(groupId);
+    if (!group) return null;
+
+    const updates: Record<string, null> = {};
+
+    group.users.forEach((u, index) => {
+      if (u && userInGroupIds.includes(u._id.toString())) {
+        updates[`users.${index}`] = null;
+      }
+    });
+
+    if (Object.keys(updates).length === 0) return null;
+
+    const result = await this.groupMongo.updateOne(
+      { _id: groupId },
+      { $set: updates },
+    );
+
+    if (result.modifiedCount === 0) return null;
+
+    return this.groupMongo.findById(groupId);
+  }
 
   async updateMessageIdGroup(groupId: string, messageId: number) {
     await this.groupMongo.updateOne(
@@ -102,6 +163,7 @@ export class GroupService {
           [`${fieldPath}.email`]: user.reg_email,
           [`${fieldPath}.password`]: user.reg_password,
           [`${fieldPath}.anonName`]: anonName,
+          [`${fieldPath}.byByKruger`]: true,
         },
       },
     );
@@ -117,7 +179,6 @@ export class GroupService {
     return {
       groupId: group._id,
       messageIdInTelegramGroup: updatedGroup.messageIdInTelegramGroup,
-      telegramGroup: updatedGroup.telegramGroup,
       status: updatedUser.status,
       date: updatedUser.date,
       anonName: anonName,
@@ -138,7 +199,6 @@ export class GroupService {
       group.users = cleanedUsers;
       cleanedGroups.push(group);
     }
-    console.log(cleanedGroups);
     return cleanedGroups;
   }
 
@@ -197,7 +257,6 @@ export class GroupService {
   async createGroup(newGroup: Pick<Group, 'name' | 'promo' | 'aliance'>) {
     return await this.groupMongo.create({
       ...newGroup,
-      telegramGroup: this.config.get<number>('GROUP_TELEGRAM_OPEN'),
     });
   }
 }

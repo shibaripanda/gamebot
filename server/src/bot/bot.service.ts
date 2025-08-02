@@ -34,10 +34,28 @@ export class BotService {
     await this.firstStepReg(userId);
   }
 
+  async buyByMe(userId: number) {
+    const buttons = [
+      [{ text: 'Честно покупаю сам', callback_data: 'buyByMeStartReg' }],
+      [{ text: 'В начало', callback_data: 'mainMenu' }],
+    ];
+    await this.bot.telegram.sendMessage(
+      userId,
+      `Без проблем! Но есть ограничения:
+1- По количеству мест. Вы должны успеть записаться в первых рядах, либо придется ждать следующий старт группы.
+2- Записываться к нам в закупки, покупая акцию не у нас, строго запрещено! Прошу, если вы покупаете не самостоятельно, а через другой сервис - не тратьте наше время. Мы узнаем.`,
+      {
+        reply_markup: {
+          inline_keyboard: buttons,
+        },
+      },
+    );
+  }
+
   async firstStepReg(userId: number) {
     const buttons = [
       [{ text: 'Покупаю через тебя', callback_data: 'reg_gameName' }],
-      [{ text: 'Буду покупать сам', callback_data: '!!!!!!!!!!!' }],
+      [{ text: 'Буду покупать сам', callback_data: 'buyByMe' }],
       [{ text: 'Вернуться назад', callback_data: 'mainMenu' }],
     ];
     await this.bot.telegram.sendMessage(
@@ -181,7 +199,7 @@ export class BotService {
       filledUsers.push(null);
     }
 
-    const filledCount = filledUsers.filter((u) => u?.status).length;
+    const filledCount = filledUsers.filter((u) => u?.confirmation).length;
 
     // Батарея — снизу вверх
     const battery: string[] = [];
@@ -195,8 +213,8 @@ export class BotService {
     let step = 1;
     for (const user of filledUsers) {
       const label = user?.status
-        ? `🚀 <b>${step}: ${user.anonName}</b>`
-        : `➖ <b>${step}: </b>---------------`;
+        ? `<b>${step}: ${user.confirmation ? '✅🚀' : '⏰🚀'} ${user.anonName}</b>`
+        : `<b>${step}: </b>---------------`;
       userLines.push(label);
       step++;
     }
@@ -204,7 +222,7 @@ export class BotService {
     // Объединение с разделителем │
     const combinedLines = battery.map((b, i) => `${b} │ ${userLines[i]}`);
 
-    const header = `${group.name}\n🔸🔸🔸🔸🔸🔸🔸🔸\n🔸${group.promo}\n🔸🔸🔸🔸🔸🔸🔸🔸\n\n`;
+    const header = `${group.name}\n\n🔸🔸🔸🔸🔸🔸🔸🔸\n🔸<b>${group.promo}</b>\n🔸🔸🔸🔸🔸🔸🔸\n\n`;
     const body = combinedLines.join('\n');
     return `${header}${body}`;
   }
@@ -266,24 +284,44 @@ export class BotService {
         parse_mode: 'HTML',
       },
     );
-    const list = await this.getListUsersOfGroup(res.groupId);
-    if (!res.messageIdInTelegramGroup) {
-      await this.sendMessageToGroup(list, res.groupId);
-      // const message = await this.bot.telegram.sendMessage(
-      //   this.config.get<number>('GROUP_TELEGRAM_OPEN')!,
-      //   list,
-      //   { parse_mode: 'HTML' },
-      // );
-      // await this.groupService.updateMessageIdGroup(
-      //   res.groupId,
-      //   message.message_id,
-      // );
-      // return;
+    await this.sendOrUpdateMessage(res.groupId, res.messageIdInTelegramGroup);
+    // const list = await this.getListUsersOfGroup(res.groupId);
+    // if (!res.messageIdInTelegramGroup) {
+    //   await this.sendMessageToGroup(list, res.groupId);
+    //   return;
+    // }
+    // await this.bot.telegram
+    //   .editMessageText(
+    //     this.config.get<number>('GROUP_TELEGRAM_OPEN'),
+    //     res.messageIdInTelegramGroup,
+    //     undefined,
+    //     list,
+    //     { parse_mode: 'HTML' },
+    //   )
+    //   .catch(async (error) => {
+    //     if (
+    //       error instanceof Error &&
+    //       'response' in error &&
+    //       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    //       (error as any).response?.error_code === 400
+    //     ) {
+    //       await this.sendMessageToGroup(list, res.groupId);
+    //     } else {
+    //       throw error; // другие ошибки пробрасываем
+    //     }
+    //   });
+  }
+
+  async sendOrUpdateMessage(groupId: string, messageId: number | undefined) {
+    const list = await this.getListUsersOfGroup(groupId);
+    if (!messageId) {
+      await this.sendMessageToGroup(list, groupId);
+      return;
     }
     await this.bot.telegram
       .editMessageText(
         this.config.get<number>('GROUP_TELEGRAM_OPEN'),
-        res.messageIdInTelegramGroup,
+        messageId,
         undefined,
         list,
         { parse_mode: 'HTML' },
@@ -295,7 +333,7 @@ export class BotService {
           // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
           (error as any).response?.error_code === 400
         ) {
-          await this.sendMessageToGroup(list, res.groupId);
+          await this.sendMessageToGroup(list, groupId);
         } else {
           throw error; // другие ошибки пробрасываем
         }

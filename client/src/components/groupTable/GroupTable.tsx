@@ -1,15 +1,22 @@
 import { useState } from 'react';
 import cx from 'clsx';
-import { Avatar, Button, Checkbox, Group, ScrollArea, Space, Table, Text } from '@mantine/core';
+import { Button, Checkbox, Group, ScrollArea, Space, Table } from '@mantine/core';
 import classes from './GroupTable.module.css';
 import { RegUser } from '../../pages/dashboardPage/interfaces/user';
+import { useDisclosure } from '@mantine/hooks';
+import { ConfirmModal } from '../confirmModal/ConfirmModal';
 
 interface UserProps {
   users: RegUser[];
+  editRegUsers: any;
+  groupId: string;
 }
+export type Actions = 'Delete' | 'Confirm' | false
 
-export function GroupTable({users}: UserProps) {
+export function GroupTable({users, editRegUsers, groupId}: UserProps) {
   const [selection, setSelection] = useState<string[]>([]);
+  const [сonfirmModal, topConfirmModal] = useDisclosure(false);
+  const [action, setAction] = useState<Actions>(false)
 
   function formatDateOrTime(input: Date | string | number): string {
   const date = new Date(input);
@@ -29,25 +36,17 @@ export function GroupTable({users}: UserProps) {
       current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
     );
   const toggleAll = () =>
-    setSelection((current) => (current.length === users.length ? [] : users.map((item) => item.anonName)));
+    setSelection((current) => (current.length === users.length ? [] : users.map((item) => item._id)));
 
   const rows = users.map((item) => {
-    const selected = selection.includes(item.anonName);
+    const selected = selection.includes(item._id);
     return (
-      <Table.Tr key={item.anonName} className={cx({ [classes.rowSelected]: selected })}>
+      <Table.Tr key={item._id} className={cx({ [classes.rowSelected]: selected })}>
         <Table.Td>
-          <Checkbox checked={selection.includes(item.anonName)} onChange={() => toggleRow(item.anonName)} />
+          <Checkbox checked={selection.includes(item._id)} onChange={() => toggleRow(item._id)} />
         </Table.Td>
-        <Table.Td>
-          <Group gap="sm">
-            <Avatar size={26} radius={26}>
-              {item.anonName[item.anonName.length - 1]}
-            </Avatar>
-            <Text size="sm" fw={500}>
-              {item.anonName}
-            </Text>
-          </Group>
-        </Table.Td>
+        <Table.Td>{item.confirmation ? '✅' : '⏰'}</Table.Td>
+        <Table.Td>{item.anonName}</Table.Td>
         <Table.Td>{item.gameName}</Table.Td>
         <Table.Td>{item.email}</Table.Td>
         <Table.Td>{item.password}</Table.Td>
@@ -57,12 +56,33 @@ export function GroupTable({users}: UserProps) {
     );
   });
 
+
+
   return (
+    <>
     <ScrollArea>
 
         <Group justify="flex-end">
-            <Button>Button 1</Button>
-            <Button>Button 2</Button>  
+            <Button
+            color='red'
+            disabled={!selection.length}
+            onClick={() => {
+              setAction('Delete')
+              topConfirmModal.open()
+            }}
+            >
+              Delete {selection.length ? selection.length + ' user (s)' : ''}
+            </Button>
+            <Button 
+            color='green'
+            disabled={!selection.length}
+            onClick={() => {
+              setAction('Confirm')
+              topConfirmModal.open()
+            }}
+            >
+              Confirm {selection.length ? selection.length + ' user (s)' : ''}
+            </Button>  
             <Button>Button 3</Button>  
             <Button>Button 4</Button> 
             <Button>Button 5</Button>    
@@ -78,6 +98,7 @@ export function GroupTable({users}: UserProps) {
                     indeterminate={selection.length > 0 && selection.length !== users.length}
                 />
                 </Table.Th>
+                <Table.Th>Confirm</Table.Th>
                 <Table.Th>Anon Name</Table.Th>
                 <Table.Th>Game Name</Table.Th>
                 <Table.Th>Email</Table.Th>
@@ -90,5 +111,15 @@ export function GroupTable({users}: UserProps) {
             <Table.Tbody>{rows}</Table.Tbody>
         </Table>
     </ScrollArea>
+    <ConfirmModal 
+    сonfirmModal={сonfirmModal} 
+    topConfirmModal={topConfirmModal} 
+    editRegUsers={editRegUsers} 
+    selection={selection}
+    action={action}
+    groupId={groupId}
+    setSelection={setSelection}
+    />
+    </>
   );
 }

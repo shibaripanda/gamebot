@@ -8,6 +8,7 @@ import { ServerResponce } from "./interfaces/serverResponce";
 import { GetGroups } from "./interfaces/getGroups";
 import { Group } from "./interfaces/group";
 import { TableGroups } from "../../components/tableGroups/TableGroups";
+import { GetGroup } from "./interfaces/getGroup";
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -83,6 +84,21 @@ export function DashboardPage() {
 
   }
 
+  const editRegUsers = (idRegUsersForDelete: string[], groupId: string, action: string) => {
+    if (!isSocketConnected) return;
+    console.log(idRegUsersForDelete, groupId, action);
+    socketRef.current.emit('editRegUsers', {idRegUsersForDelete, groupId, action}, (response: GetGroup) => {
+      console.log('editRegUsers:', response);
+      if(!response.success) return
+      console.log(response.group)
+      setGroups(ex =>
+        ex.map(group =>
+          group._id === response.group._id ? response.group : group
+        )
+      )
+    });
+  }
+
   if(sessionStorage.getItem('token')){
     return (
       <>
@@ -112,7 +128,7 @@ export function DashboardPage() {
           />
         </MantineGroup>
       </Center>
-      <TableGroups
+      <TableGroups editRegUsers={editRegUsers}
         groups={[...filteredGroups].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())}
       />
       </>

@@ -10,6 +10,7 @@
 // }
 
 export interface RegUser {
+  _id: string;
   anonName: string;
   date: number;
   email: string;
@@ -17,4 +18,7 @@ export interface RegUser {
   password: string;
   status: boolean;
   telegramId: number;
+  byByKruger: boolean;
+  imagePromoForReg: string;
+  confirmation: boolean;
 }

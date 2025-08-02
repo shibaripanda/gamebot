@@ -1,7 +1,6 @@
 export interface DataNewReg {
   groupId: string;
   messageIdInTelegramGroup?: number;
-  telegramGroup?: number;
   status: boolean;
   date: number;
   anonName: string;

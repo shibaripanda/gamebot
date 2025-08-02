@@ -1,14 +1,52 @@
 import * as mongoose from 'mongoose';
 
-export interface UserInGroup {
-  telegramId: number;
-  status: boolean;
-  date: number;
-  gameName: string;
-  email: string;
-  password: string;
-  anonName: string;
-}
+export const UserInGroupSchema = new mongoose.Schema(
+  {
+    telegramId: {
+      type: Number,
+      require: true,
+    },
+    status: {
+      type: Boolean,
+      default: false,
+      require: true,
+    },
+    date: {
+      type: Number,
+      require: true,
+    },
+    gameName: {
+      type: String,
+      require: true,
+    },
+    email: {
+      type: String,
+      require: true,
+    },
+    password: {
+      type: String,
+      require: true,
+    },
+    anonName: {
+      type: String,
+      require: true,
+    },
+    byByKruger: {
+      type: Boolean,
+      default: false,
+      require: true,
+    },
+    imagePromoForReg: {
+      type: String,
+    },
+    confirmation: {
+      type: Boolean,
+      default: false,
+      require: true,
+    },
+  },
+  { timestamps: false },
+);
 
 export const GroupSchema = new mongoose.Schema(
   {
@@ -26,7 +64,7 @@ export const GroupSchema = new mongoose.Schema(
       require: true,
     },
     users: {
-      type: Array,
+      type: [UserInGroupSchema],
       default: [],
       require: true,
     },
@@ -34,10 +72,6 @@ export const GroupSchema = new mongoose.Schema(
       type: Number,
       default: 30,
       require: true,
-    },
-    telegramGroup: {
-      type: Number,
-      require: false,
     },
     messageIdInTelegramGroup: {
       type: Number,
@@ -47,6 +81,20 @@ export const GroupSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+export interface UserInGroup {
+  _id: string;
+  telegramId: number;
+  status: boolean;
+  date: number;
+  gameName: string;
+  email: string;
+  password: string;
+  anonName: string;
+  byByKruger: boolean;
+  imagePromoForReg: string;
+  confirmation: boolean;
+}
+
 export interface Group {
   _id: string;
   name: string;
@@ -54,8 +102,9 @@ export interface Group {
   aliance: string;
   users: (UserInGroup | null)[];
   maxCountUsersInGroup: number;
-  telegramGroup?: number;
   messageIdInTelegramGroup?: number;
 }
 
 export type GroupDocument = Group & mongoose.Document;
+
+export type UserInGroupDocument = UserInGroup & mongoose.Document;

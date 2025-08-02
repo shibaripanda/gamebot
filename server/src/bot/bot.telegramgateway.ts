@@ -86,6 +86,18 @@ export class TelegramGateway {
     await ctx.answerCbQuery();
   }
 
+  @Action('buyByMe')
+  async buyByMe(@Ctx() ctx: UserTelegrafContext) {
+    console.log('@Action buyByMe');
+    // await this.userService.addRegData(
+    //   ctx.from.id,
+    //   'next_step_data',
+    //   'reg_gameName',
+    // );
+    await this.botService.buyByMe(ctx.from.id);
+    await ctx.answerCbQuery();
+  }
+
   @Action('takePlace')
   async takePlace(@Ctx() ctx: UserTelegrafContext) {
     console.log('@Action takePlace');
