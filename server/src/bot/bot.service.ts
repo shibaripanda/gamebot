@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectBot } from 'nestjs-telegraf';
+import { AppService } from 'src/app/app.service';
 import { DataNewReg } from 'src/app/interfaces/dataNewReg';
 import { Group } from 'src/group/group.model';
 import { GroupService } from 'src/group/group.service';
@@ -14,15 +15,51 @@ export class BotService {
     private readonly config: ConfigService,
     private groupService: GroupService,
     private userService: UserService,
+    private appService: AppService,
   ) {}
 
-  sendPaymentToKrugerUsers(
+  async sendPaymentToKrugerUsers(
     groupId: string,
-    regUsersId: string[],
+    regUsersIds: string[],
     paymentId: string,
-  ) {
-    console.log(groupId, regUsersId, paymentId);
-    return true;
+  ): Promise<Group | false> {
+    const group = await this.groupService.getGroup(groupId);
+    if (!group) {
+      console.error('Group not found');
+      return false;
+    }
+
+    const payment = await this.appService.getPaymentMetod(paymentId);
+    if (!payment) {
+      console.error('Payment not found');
+      return false;
+    }
+
+    // Проходим по переданным _id пользователей
+    for (const userId of regUsersIds) {
+      const user = group.users.find((u) => u?._id?.toString() === userId);
+      if (!user || !user.telegramId) {
+        console.warn(
+          `User with ID ${userId} not found in group or has no telegramId`,
+        );
+        continue;
+      }
+
+      try {
+        await this.bot.telegram.sendMessage(
+          user.telegramId,
+          `<b>${user.gameName} (${user.anonName})</b>\n💸 Реквизиты:\n ${payment.paymentData}`,
+          { parse_mode: 'HTML' },
+        );
+      } catch (err) {
+        console.error(
+          `Ошибка при отправке сообщения юзеру ${user.telegramId}`,
+          err,
+        );
+      }
+    }
+
+    return group;
   }
 
   async notifyUsersInGroupByIdsConfirmation(
@@ -45,6 +82,24 @@ export class BotService {
         );
       }
     }
+  }
+
+  async startRegistrationByMe(userId: number, groupId: string) {
+    const group = await this.groupService.getGroup(groupId);
+    console.log(group);
+    if (!group) {
+      await this.getGroupsButtonsList(userId);
+      return;
+    }
+    const res = await this.groupService.addUserToGroup(groupId, userId);
+    if (!res) {
+      console.log('soldOut');
+      await this.soldOutMessage(userId);
+      return;
+    }
+    await this.userService.addRegData(userId, 'reg_groupId', groupId);
+    // await this.userService.addRegData(userId, 'next_step_data', 'reg_gameName');
+    await this.firstStepReg(userId);
   }
 
   async startRegistration(userId: number, groupId: string) {

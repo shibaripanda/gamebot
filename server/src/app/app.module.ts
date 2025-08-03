@@ -6,7 +6,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { BotModule } from 'src/bot/bot.module';
 import { UserModule } from 'src/user/user.module';
 import { AppGateway } from './app.gateway';
-import { AppSchema } from './app.model';
+import { AppSchema, PaymentMetodSchema } from './app.model';
 import { JwtModule } from '@nestjs/jwt';
 import { SocketAuthMiddleware } from './auth-guards/socket-auth.middleware';
 import { GroupModule } from 'src/group/group.module';
@@ -33,7 +33,10 @@ import { GroupModule } from 'src/group/group.module';
         },
       }),
     }),
-    MongooseModule.forFeature([{ name: 'App', schema: AppSchema }]),
+    MongooseModule.forFeature([
+      { name: 'App', schema: AppSchema },
+      { name: 'PaymentMetod', schema: PaymentMetodSchema },
+    ]),
     forwardRef(() => BotModule),
     UserModule,
     GroupModule,

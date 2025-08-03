@@ -30,6 +30,7 @@ export const AppSchema = new mongoose.Schema(
 );
 
 export interface PaymentMetod {
+  // _id: string;
   paymentName: string;
   paymentData: string;
 }
@@ -38,4 +39,5 @@ export interface App {
   paymentMetods: [PaymentMetod];
 }
 
+export type PaymentMetodDocument = PaymentMetod & mongoose.Document;
 export type AppDocument = App & mongoose.Document;

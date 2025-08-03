@@ -63,7 +63,7 @@ export class AppGateway
     client: Socket,
     payload: EditRegUsers,
   ): Promise<any> {
-    let res: Group | null | boolean = null;
+    let res: Group | null | false = null;
     if (payload.action === 'Delete') {
       res = await this.groupService.deleteUsersInGroupAndSetNull(
         payload.groupId,
@@ -86,12 +86,12 @@ export class AppGateway
         payload.idRegUsersForDeleteOrEdit,
       );
     } else if (payload.action === 'Aliance') {
-      res = this.botService.sendPaymentToKrugerUsers(
+      res = await this.botService.sendPaymentToKrugerUsers(
         payload.groupId,
         payload.idRegUsersForDeleteOrEdit,
         payload.payment,
       );
-      return { success: true, message: 'Подтверждено' };
+      return { success: true, message: 'Подтверждено', group: res };
     }
     if (res) {
       await this.botService.sendOrUpdateMessage(
