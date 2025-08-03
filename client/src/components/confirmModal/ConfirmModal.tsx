@@ -1,6 +1,6 @@
-import { Button, Group, Modal } from '@mantine/core';
+import { Button, Group, Modal, Space } from '@mantine/core';
 import { Actions } from '../groupTable/GroupTable';
-
+import { PaymentMetod } from '../../pages/dashboardPage/interfaces/paymentMedod';
 
 interface ConfirmModalModalProps {
   сonfirmModal: any;
@@ -10,15 +10,15 @@ interface ConfirmModalModalProps {
   action: Actions;
   groupId: string;
   setSelection: any;
+  paymentsMetods: PaymentMetod[];
 }
 
-export function ConfirmModal({ сonfirmModal, topConfirmModal, editRegUsers, selection, action, groupId, setSelection}: ConfirmModalModalProps) {
+export function ConfirmModal({ сonfirmModal, topConfirmModal, editRegUsers, selection, action, groupId, setSelection, paymentsMetods }: ConfirmModalModalProps) {
 
-  return (
-    <>
-      <Modal opened={сonfirmModal} onClose={topConfirmModal.close} title="⚠️ Подтверждение" centered>
-        <Group justify="space-between">
-          <Button
+  const buttons = () => {
+    if(action !== 'Aliance'){
+      return (
+        <Button
           color={action === 'Delete' ? 'red' : 'green'}
           onClick={async () =>{
             if(action){
@@ -28,9 +28,40 @@ export function ConfirmModal({ сonfirmModal, topConfirmModal, editRegUsers, sel
             }
           }}>
             {action}
-          </Button>
+        </Button>
+      )
+    }
+    return(
+      <>
+      <Group>
+        {paymentsMetods.map(but => 
+        <Button
+          color='green'
+          key={but._id}
+          onClick={async () =>{
+            if(action){
+              await editRegUsers(selection, groupId, action, but._id)
+              setSelection([])
+              topConfirmModal.close()
+            }
+          }}>
+          {but.paymentName}
+        </Button>)}
+      </Group>
+      <Space h='xl'/>
+      </>
+    )
+  }
+  return (
+    <>
+      <Modal opened={сonfirmModal} onClose={topConfirmModal.close} title="⚠️ Подтверждение" centered>
+        <Group justify="space-between">
+          {buttons()}
           <Button
-          onClick={topConfirmModal.close}
+          onClick={() => {
+            setSelection([])
+            topConfirmModal.close()
+          }}
           >
             Отмена
           </Button>

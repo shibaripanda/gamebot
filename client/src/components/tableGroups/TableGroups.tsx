@@ -2,13 +2,15 @@ import { Accordion, Container, Group as GroupMantine, Group as MantineGroup } fr
 import classes from './TableGroups.module.css';
 import { Group } from '../../pages/dashboardPage/interfaces/group';
 import { GroupTable } from '../groupTable/GroupTable';
+import { PaymentMetod } from '../../pages/dashboardPage/interfaces/paymentMedod';
 
 interface GroupsProps {
   groups: Group[];
   editRegUsers: any;
+  paymentsMetods: PaymentMetod[];
 }
 
-export function TableGroups({groups, editRegUsers}: GroupsProps) {
+export function TableGroups({groups, editRegUsers, paymentsMetods }: GroupsProps) {
 
     if(!groups.length) return
 
@@ -39,6 +41,7 @@ export function TableGroups({groups, editRegUsers}: GroupsProps) {
                         users={gr.users.filter(user => user && user.status === true)} 
                         editRegUsers={editRegUsers} 
                         groupId={gr._id}
+                        paymentsMetods={paymentsMetods}
                         />
                     </Accordion.Panel>
                 </Accordion.Item>

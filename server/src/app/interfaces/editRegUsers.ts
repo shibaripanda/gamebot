@@ -1,5 +1,6 @@
 export interface EditRegUsers {
-  idRegUsersForDelete: string[];
+  idRegUsersForDeleteOrEdit: string[];
   groupId: string;
-  action: 'Delete' | 'Confirm';
+  action: 'Delete' | 'Confirm' | 'Unconfirm' | 'Aliance';
+  payment: string;
 }

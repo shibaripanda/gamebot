@@ -21,6 +21,33 @@ export class GroupService {
     private readonly config: ConfigService,
   ) {}
 
+  async unConfirmUsersInGroup(
+    groupId: string,
+    userInGroupIds: string[],
+  ): Promise<Group | null> {
+    const group = await this.groupMongo.findById(groupId);
+    if (!group) return null;
+
+    const updates: Record<string, boolean> = {};
+
+    group.users.forEach((u, index) => {
+      if (u && userInGroupIds.includes(u._id.toString())) {
+        updates[`users.${index}.confirmation`] = false;
+      }
+    });
+
+    if (Object.keys(updates).length === 0) return null;
+
+    const result = await this.groupMongo.updateOne(
+      { _id: groupId },
+      { $set: updates },
+    );
+
+    if (result.modifiedCount === 0) return null;
+
+    return this.groupMongo.findById(groupId);
+  }
+
   async confirmUsersInGroup(
     groupId: string,
     userInGroupIds: string[],

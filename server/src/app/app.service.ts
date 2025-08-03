@@ -1,19 +1,61 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { TokenData } from './interfaces/tokenData';
 import { v4 as uuidv4 } from 'uuid';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { TokenAndUserId } from './interfaces/tokenAndUserId';
+import { AppDocument, PaymentMetod } from './app.model';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 
 @Injectable()
-export class AppService {
+export class AppService implements OnModuleInit {
   private tokens = new Map<string, TokenData>();
 
   constructor(
     private readonly config: ConfigService,
     private jwt: JwtService,
+    @InjectModel('App') private appMongo: Model<AppDocument>,
   ) {
     console.log('AppService initialized');
+  }
+
+  async onModuleInit() {
+    await this.appMongo.updateOne(
+      { app: 'app' },
+      { $setOnInsert: { app: 'app', paymentMetods: [] } },
+      { upsert: true },
+    );
+  }
+
+  async deletePaymentMetod(metod: PaymentMetod) {
+    const res = await this.appMongo.findOneAndUpdate(
+      { app: 'app' },
+      { $pull: { paymentMetods: metod } },
+      { returtDocument: 'after', new: true },
+    );
+    if (res) return res.paymentMetods;
+    return false;
+  }
+
+  async addPaymentMetod(metod: PaymentMetod) {
+    const res = await this.appMongo.findOneAndUpdate(
+      { app: 'app' },
+      { $addToSet: { paymentMetods: metod } },
+      { returnDocument: 'after', new: true },
+    );
+    console.log(res);
+    if (res) return res.paymentMetods;
+    return false;
+  }
+
+  async getPaymentMetods() {
+    const res = await this.appMongo.findOne(
+      { app: 'app' },
+      { _id: 0, paymentMetods: 1 },
+    );
+    if (res) return res.paymentMetods;
+    return false;
   }
 
   getAuthLink(userId: number): string {

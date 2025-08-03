@@ -1,4 +1,4 @@
-import { Button, Center, Group as MantineGroup, Space, TextInput, useMantineColorScheme } from "@mantine/core";
+import { Button, Center, Group as MantineGroup, TextInput, useMantineColorScheme } from "@mantine/core";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createSocket } from "../../utils/socket";
@@ -9,6 +9,9 @@ import { GetGroups } from "./interfaces/getGroups";
 import { Group } from "./interfaces/group";
 import { TableGroups } from "../../components/tableGroups/TableGroups";
 import { GetGroup } from "./interfaces/getGroup";
+import { PaymentMetodModal } from "../../components/paymentMetodModal/PaymentMetodModal";
+import { PaymentMetod } from "./interfaces/paymentMedod";
+import { GetPaymentMetods } from "./interfaces/getPaymentMetods";
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -17,6 +20,7 @@ export function DashboardPage() {
   const [newGroup, setNewGroup] = useState<NewGroup>({name: '', promo: '', aliance: ''})
   const [groups, setGroups] = useState<Group[]>([])
   const [search, setSearch] = useState('');
+  const [paymentsMetods, setPaymentMetods] = useState<PaymentMetod[]>([])
 
   const toggleTheme = () => {
     setColorScheme(colorScheme === 'dark' ? 'light' : 'dark');
@@ -58,13 +62,12 @@ export function DashboardPage() {
   useEffect(() => {
     console.log('useEffect getGroups')
     getGroups()
+    getPamentMetods()
   }, [isSocketConnected])
 
   const createNewGroup = (close: () => void) => {
     if (!socketRef.current) return;
-    console.log(newGroup)
     socketRef.current.emit('createNewGroup', newGroup, (response: ServerResponce) => {
-      console.log('Group creation response:', response);
       if(!response.success) return
       setNewGroup({name: '', promo: '', aliance: ''})
       close()
@@ -73,21 +76,26 @@ export function DashboardPage() {
 
   }
 
+  const getPamentMetods = () => {
+    if (!isSocketConnected) return;
+     socketRef.current.emit('getPaymentMetods', {}, (response: GetPaymentMetods) => {
+      if(!response.success) return
+      setPaymentMetods(response.metods)
+    });
+  }
+
   const getGroups = () => {
     if (!isSocketConnected) return;
      socketRef.current.emit('getGroups', {}, (response: GetGroups) => {
-      console.log('Get groups:', response);
       if(!response.success) return
-      console.log(response.groups)
       setGroups(response.groups)
     });
-
   }
 
-  const editRegUsers = (idRegUsersForDelete: string[], groupId: string, action: string) => {
+  const editRegUsers = (idRegUsersForDeleteOrEdit: string[], groupId: string, action: string, payment: string) => {
     if (!isSocketConnected) return;
-    console.log(idRegUsersForDelete, groupId, action);
-    socketRef.current.emit('editRegUsers', {idRegUsersForDelete, groupId, action}, (response: GetGroup) => {
+    console.log(idRegUsersForDeleteOrEdit, groupId, action);
+    socketRef.current.emit('editRegUsers', {idRegUsersForDeleteOrEdit, groupId, action, payment}, (response: GetGroup) => {
       console.log('editRegUsers:', response);
       if(!response.success) return
       console.log(response.group)
@@ -99,11 +107,23 @@ export function DashboardPage() {
     });
   }
 
+   const editPaymentsMetods = (action: string, name: string, data: string, idForDelete: string) => {
+    if (!isSocketConnected) return;
+    console.log(action, name, data, idForDelete);
+    socketRef.current.emit('editPaymentsMetods', {action, name, data, idForDelete}, (response: GetPaymentMetods) => {
+      console.log('editPaymentsMetods:', response);
+      if(!response.success) return
+      console.log(response.metods)
+      setPaymentMetods(response.metods)
+    });
+  }
+
   if(sessionStorage.getItem('token')){
     return (
       <>
       <Center style={{ margin: '10px' }}>
         <MantineGroup justify="center" gap="xs">
+          <PaymentMetodModal paymentsMetods={paymentsMetods} editPaymentsMetods={editPaymentsMetods}/>
           <Button variant="default" onClick={toggleTheme}>
             {colorScheme === 'dark' ? 'Light' : 'Dark'}
           </Button>
@@ -128,7 +148,7 @@ export function DashboardPage() {
           />
         </MantineGroup>
       </Center>
-      <TableGroups editRegUsers={editRegUsers}
+      <TableGroups editRegUsers={editRegUsers} paymentsMetods={paymentsMetods}
         groups={[...filteredGroups].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())}
       />
       </>

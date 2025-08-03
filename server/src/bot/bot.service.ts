@@ -16,6 +16,37 @@ export class BotService {
     private userService: UserService,
   ) {}
 
+  sendPaymentToKrugerUsers(
+    groupId: string,
+    regUsersId: string[],
+    paymentId: string,
+  ) {
+    console.log(groupId, regUsersId, paymentId);
+    return true;
+  }
+
+  async notifyUsersInGroupByIdsConfirmation(
+    groupId: string,
+    userIds: string[],
+  ): Promise<void> {
+    const group = await this.groupService.getGroup(groupId);
+    if (!group || !group.users) return;
+
+    const usersToNotify = group.users.filter(
+      (user) =>
+        user && userIds.includes(user._id?.toString() ?? user.confirmation),
+    );
+
+    for (const user of usersToNotify) {
+      if (user && user.telegramId) {
+        await this.sendTextMessage(
+          user.telegramId,
+          `✅ <b>${user.anonName} (${user.gameName})</b>\nМожно заходить на аккаунт, но пока из альянса выходить нельзя ⚠️`,
+        );
+      }
+    }
+  }
+
   async startRegistration(userId: number, groupId: string) {
     const group = await this.groupService.getGroup(groupId);
     console.log(group);
@@ -227,24 +258,6 @@ export class BotService {
     return `${header}${body}`;
   }
 
-  // async getListUsersOfGroup(groupId: string): Promise<string> {
-  //   const group: Group | null = await this.groupService.getGroup(groupId);
-  //   let step = 1;
-  //   if (group) {
-  //     let list = `${group.name}\n🔸🔸🔸🔸🔸🔸🔸🔸\n🔸${group.promo}\n🔸🔸🔸🔸🔸🔸🔸🔸\n`;
-  //     for (const user of group.users) {
-  //       if (user && user.status) {
-  //         list = list + `🔋 <b>${step}: ` + user.anonName + '</b> 🚀\n';
-  //       } else {
-  //         list = list + `🪫<b>${step}: </b>` + '---' + '\n';
-  //       }
-  //       step++;
-  //     }
-  //     return list;
-  //   }
-  //   return 'Ошибка';
-  // }
-
   async confirmUserInGroup(userId: number) {
     const res: DataNewReg | null =
       await this.groupService.confirmUserInGroup(userId);
@@ -437,7 +450,7 @@ export class BotService {
   }
 
   async sendTextMessage(userId: number, text: string) {
-    await this.bot.telegram.sendMessage(userId, text);
+    await this.bot.telegram.sendMessage(userId, text, { parse_mode: 'HTML' });
   }
 
   async sendOneTimeInvite(userId: number) {

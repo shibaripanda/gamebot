@@ -1,19 +1,21 @@
 import { useState } from 'react';
 import cx from 'clsx';
-import { Button, Checkbox, Group, ScrollArea, Space, Table } from '@mantine/core';
+import { Button, Checkbox, Group, ScrollArea, Space, Table, Text } from '@mantine/core';
 import classes from './GroupTable.module.css';
 import { RegUser } from '../../pages/dashboardPage/interfaces/user';
 import { useDisclosure } from '@mantine/hooks';
 import { ConfirmModal } from '../confirmModal/ConfirmModal';
+import { PaymentMetod } from '../../pages/dashboardPage/interfaces/paymentMedod';
 
 interface UserProps {
   users: RegUser[];
   editRegUsers: any;
   groupId: string;
+  paymentsMetods: PaymentMetod[];
 }
-export type Actions = 'Delete' | 'Confirm' | false
+export type Actions = 'Delete' | 'Confirm' | 'Unconfirm' | 'Aliance' | false
 
-export function GroupTable({users, editRegUsers, groupId}: UserProps) {
+export function GroupTable({users, editRegUsers, groupId, paymentsMetods }: UserProps) {
   const [selection, setSelection] = useState<string[]>([]);
   const [сonfirmModal, topConfirmModal] = useDisclosure(false);
   const [action, setAction] = useState<Actions>(false)
@@ -63,6 +65,9 @@ export function GroupTable({users, editRegUsers, groupId}: UserProps) {
     <ScrollArea>
 
         <Group justify="flex-end">
+            <Text>
+              {selection.length ? selection.length + ' user (s)' : ''}
+            </Text>
             <Button
             color='red'
             disabled={!selection.length}
@@ -71,7 +76,7 @@ export function GroupTable({users, editRegUsers, groupId}: UserProps) {
               topConfirmModal.open()
             }}
             >
-              Delete {selection.length ? selection.length + ' user (s)' : ''}
+              Delete
             </Button>
             <Button 
             color='green'
@@ -81,11 +86,27 @@ export function GroupTable({users, editRegUsers, groupId}: UserProps) {
               topConfirmModal.open()
             }}
             >
-              Confirm {selection.length ? selection.length + ' user (s)' : ''}
+              Confirm
             </Button>  
-            <Button>Button 3</Button>  
-            <Button>Button 4</Button> 
-            <Button>Button 5</Button>    
+            <Button
+            disabled={!selection.length}
+            onClick={() => {
+              setAction('Unconfirm')
+              topConfirmModal.open()
+            }}
+            >
+              Unconfirm
+            </Button>
+            <Button
+            disabled={users.filter(user => user && user.confirmation).length !== 2}
+            onClick={() => {
+              setSelection([...users.filter(user => user.byByKruger === true).map(user => user._id)]);
+              setAction('Aliance')
+              topConfirmModal.open()
+            }}
+            >
+              Aliance
+            </Button>   
         </Group>
         <Space h='xl'/>
         <Table miw={800} verticalSpacing="sm">
@@ -119,6 +140,7 @@ export function GroupTable({users, editRegUsers, groupId}: UserProps) {
     action={action}
     groupId={groupId}
     setSelection={setSelection}
+    paymentsMetods={paymentsMetods}
     />
     </>
   );

@@ -1,22 +1,41 @@
 import * as mongoose from 'mongoose';
 
-export const AppSchema = new mongoose.Schema(
+export const PaymentMetodSchema = new mongoose.Schema(
   {
-    link: {
+    paymentName: {
+      type: String,
+      default: 'PayMetod',
+    },
+    paymentData: {
       type: String,
       default: '',
     },
-    name: {
+  },
+  { timestamps: false },
+);
+
+export const AppSchema = new mongoose.Schema(
+  {
+    app: {
       type: String,
-      default: '',
+      unique: true,
+      default: 'gameBot',
+    },
+    paymentMetods: {
+      type: [PaymentMetodSchema],
+      default: [],
     },
   },
   { timestamps: true },
 );
 
+export interface PaymentMetod {
+  paymentName: string;
+  paymentData: string;
+}
+
 export interface App {
-  link?: string;
-  name?: string;
+  paymentMetods: [PaymentMetod];
 }
 
 export type AppDocument = App & mongoose.Document;

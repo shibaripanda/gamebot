@@ -14,6 +14,8 @@ import { GroupService } from 'src/group/group.service';
 import { Group } from 'src/group/group.model';
 import { EditRegUsers } from './interfaces/editRegUsers';
 import { BotService } from 'src/bot/bot.service';
+import { AppService } from './app.service';
+import { EditPaymentMetods } from './interfaces/editPaymentMetods';
 
 @WebSocketGateway({
   cors: {
@@ -27,6 +29,7 @@ export class AppGateway
     private readonly socketAuthMiddleware: SocketAuthMiddleware,
     private groupService: GroupService,
     private botService: BotService,
+    private appService: AppService,
   ) {}
   @WebSocketServer()
   server: Server;
@@ -60,18 +63,35 @@ export class AppGateway
     client: Socket,
     payload: EditRegUsers,
   ): Promise<any> {
-    console.log(payload);
-    let res: Group | null = null;
+    let res: Group | null | boolean = null;
     if (payload.action === 'Delete') {
       res = await this.groupService.deleteUsersInGroupAndSetNull(
         payload.groupId,
-        payload.idRegUsersForDelete,
+        payload.idRegUsersForDeleteOrEdit,
       );
     } else if (payload.action === 'Confirm') {
       res = await this.groupService.confirmUsersInGroup(
         payload.groupId,
-        payload.idRegUsersForDelete,
+        payload.idRegUsersForDeleteOrEdit,
       );
+      if (res) {
+        await this.botService.notifyUsersInGroupByIdsConfirmation(
+          payload.groupId,
+          payload.idRegUsersForDeleteOrEdit,
+        );
+      }
+    } else if (payload.action === 'Unconfirm') {
+      res = await this.groupService.unConfirmUsersInGroup(
+        payload.groupId,
+        payload.idRegUsersForDeleteOrEdit,
+      );
+    } else if (payload.action === 'Aliance') {
+      res = this.botService.sendPaymentToKrugerUsers(
+        payload.groupId,
+        payload.idRegUsersForDeleteOrEdit,
+        payload.payment,
+      );
+      return { success: true, message: 'Подтверждено' };
     }
     if (res) {
       await this.botService.sendOrUpdateMessage(
@@ -81,6 +101,49 @@ export class AppGateway
       return { success: true, message: 'Подтверждено', group: res };
     }
     return { success: false, message: 'Ошибка' };
+  }
+
+  @SubscribeMessage('editPaymentsMetods')
+  @UseGuards(WsJwtAuthGuard)
+  async handleEditPaymentMetods(client: Socket, payload: EditPaymentMetods) {
+    if (payload.action === 'Create') {
+      const res = await this.appService.addPaymentMetod({
+        paymentName: payload.name,
+        paymentData: payload.data,
+      });
+      if (res)
+        return {
+          success: true,
+          message: 'Платежные медоты загружены',
+          metods: res,
+        };
+    }
+    if (payload.action === 'Delete') {
+      const res = await this.appService.deletePaymentMetod({
+        paymentName: payload.name,
+        paymentData: payload.data,
+      });
+      if (res)
+        return {
+          success: true,
+          message: 'Платежные медоты загружены',
+          metods: res,
+        };
+    }
+    return { success: false, message: 'Ошибка' };
+  }
+
+  @SubscribeMessage('getPaymentMetods')
+  @UseGuards(WsJwtAuthGuard)
+  async handlegetPaymentMetods(): Promise<any> {
+    const res = await this.appService.getPaymentMetods();
+    if (!res)
+      return { success: false, message: 'Платежные медоты не загружены' };
+    return {
+      success: true,
+      message: 'Платежные медоты загружены',
+      metods: res,
+    };
   }
 
   @SubscribeMessage('getGroups')
