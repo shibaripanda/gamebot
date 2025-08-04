@@ -43,6 +43,6 @@ import { GroupModule } from 'src/group/group.module';
   ],
   controllers: [AppController],
   providers: [AppService, AppGateway, SocketAuthMiddleware],
-  exports: [AppService],
+  exports: [AppService, AppGateway],
 })
 export class AppModule {}

@@ -1,25 +1,24 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import {
-  Group,
-  GroupDocument,
-  UserInGroup,
-  UserInGroupDocument,
-} from './group.model';
+import { Group, GroupDocument, UserInGroup } from './group.model';
 import { Model } from 'mongoose';
 import { UserService } from 'src/user/user.service';
-import { ConfigService } from '@nestjs/config';
+// import { ConfigService } from '@nestjs/config';
 import { DataNewReg } from 'src/app/interfaces/dataNewReg';
+// import { AppGateway } from 'src/app/app.gateway';
 
 @Injectable()
 export class GroupService {
+  // private appGateway: AppGateway;
   constructor(
     @InjectModel('Group') private groupMongo: Model<GroupDocument>,
-    @InjectModel('UserInGroup')
-    private userInGroupMongo: Model<UserInGroupDocument>,
     private userService: UserService,
-    private readonly config: ConfigService,
+    // private readonly config: ConfigService,
   ) {}
+
+  // setAppGateway(appGateway: AppGateway) {
+  //   this.appGateway = appGateway;
+  // }
 
   async unConfirmUsersInGroup(
     groupId: string,
@@ -358,6 +357,16 @@ export class GroupService {
     }
 
     return users;
+  }
+
+  async updateGroupSettings(groupId: string, data: Group) {
+    return await this.groupMongo.findOneAndUpdate({ _id: groupId }, data, {
+      new: true,
+    });
+  }
+
+  async deleteGroup(groupId: string) {
+    return this.groupMongo.findOneAndDelete({ _id: groupId }, { _id: 1 });
   }
 
   async createGroup(

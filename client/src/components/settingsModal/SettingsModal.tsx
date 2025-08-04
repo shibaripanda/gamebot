@@ -1,4 +1,4 @@
-import { Button, Group as MantineGroup, Modal, Slider, Space, Text } from '@mantine/core';
+import { Button, Group as MantineGroup, Modal, Slider, Space, Text, TextInput } from '@mantine/core';
 import { Group } from '../../pages/dashboardPage/interfaces/group';
 import { useState } from 'react';
 
@@ -6,17 +6,20 @@ interface SettingsModalProps {
   settingsmModal: boolean;
   settingsmModalUse: any;
   group: Group;
+  updateGroupSettings: any;
+  deleteGroup: any;
 }
 
-export function SettingsModal({ settingsmModal, settingsmModalUse, group }: SettingsModalProps) {
+export function SettingsModal({ settingsmModal, settingsmModalUse, group, updateGroupSettings, deleteGroup }: SettingsModalProps) {
 
   const [value, setValue] = useState(group.maxCountUsersInGroupForKruger);
   const [valueGroup, setValueGroup] = useState(group.maxCountUsersInGroup);
+  const [groupNameForDelete, setGroupNameForDelete] = useState('');
 
   const slider = () => {
       return (
         <>
-          <Text size="sm">Максимальное количество юзеров Крюгера: {group.maxCountUsersInGroupForKruger}</Text>
+          <Text size="sm">Максимальное количество юзеров не Крюгера: {group.maxCountUsersInGroupForKruger}</Text>
           <Slider
           color="blue"
           min={0}
@@ -79,10 +82,29 @@ export function SettingsModal({ settingsmModal, settingsmModalUse, group }: Sett
           <Button
           disabled={value === group.maxCountUsersInGroupForKruger && valueGroup === group.maxCountUsersInGroup}
           onClick={() => {
+            updateGroupSettings({groupId: group._id, data: {maxCountUsersInGroupForKruger: value, maxCountUsersInGroup: valueGroup }})
             settingsmModalUse.close()
           }}
           >
             Сохранить
+          </Button>
+        </MantineGroup>
+        <Space h='xl'/>
+        <MantineGroup justify="space-between">
+          <TextInput
+          placeholder='Имя группы для удаления'
+          value={groupNameForDelete}
+          onChange={(v) => setGroupNameForDelete(v.target.value)}
+          />
+          <Button
+          color='red'
+          disabled={groupNameForDelete !== group.name}
+          onClick={() => {
+            deleteGroup(group._id)
+            settingsmModalUse.close()
+          }}
+          >
+            Удалить
           </Button>
         </MantineGroup>
       </Modal>

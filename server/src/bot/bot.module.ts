@@ -33,6 +33,6 @@ import { AdminGuardAccess } from './botGuardAndMiddleware/access-control.guard';
     TelegramGateway,
     AdminGuardAccess,
   ],
-  exports: [BotService],
+  exports: [BotService, TelegramGateway],
 })
 export class BotModule {}

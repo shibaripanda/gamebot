@@ -4,22 +4,26 @@ import { v4 as uuidv4 } from 'uuid';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { TokenAndUserId } from './interfaces/tokenAndUserId';
-import { AppDocument, PaymentMetod, PaymentMetodDocument } from './app.model';
+import { AppDocument, PaymentMetod } from './app.model';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { AppGateway } from './app.gateway';
 
 @Injectable()
 export class AppService implements OnModuleInit {
   private tokens = new Map<string, TokenData>();
+  private appGateway: AppGateway;
 
   constructor(
     private readonly config: ConfigService,
     private jwt: JwtService,
     @InjectModel('App') private appMongo: Model<AppDocument>,
-    @InjectModel('PaymentMetod')
-    private paymentMetodMongo: Model<PaymentMetodDocument>,
   ) {
     console.log('AppService initialized');
+  }
+
+  setAppGateway(appGateway: AppGateway) {
+    this.appGateway = appGateway;
   }
 
   async onModuleInit() {

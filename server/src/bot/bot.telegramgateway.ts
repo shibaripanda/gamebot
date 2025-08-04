@@ -18,6 +18,7 @@ import { UserService } from 'src/user/user.service';
 import { Context, NarrowedContext } from 'telegraf';
 import { UseGuards } from '@nestjs/common';
 import { AdminGuardAccess } from './botGuardAndMiddleware/access-control.guard';
+import { AppGateway } from 'src/app/app.gateway';
 // import { GroupService } from 'src/group/group.service';
 
 export type UserTelegrafContext = NarrowedContext<
@@ -27,6 +28,7 @@ export type UserTelegrafContext = NarrowedContext<
 
 @Update()
 export class TelegramGateway {
+  private appGateway: AppGateway;
   constructor(
     private botService: BotService,
     private appService: AppService,
@@ -65,6 +67,14 @@ export class TelegramGateway {
   //   await this.groupService.createGroup(groupName);
   //   await ctx.reply(`✅ Группа "${groupName}" успешно создана.`);
   // }
+
+  setAppGateway(appGateway: AppGateway) {
+    this.appGateway = appGateway;
+  }
+
+  upWeb() {
+    this.appGateway.upData();
+  }
 
   @Command('enter')
   @UseGuards(AdminGuardAccess)
@@ -164,6 +174,7 @@ export class TelegramGateway {
     console.log('@Action succssesRegistrtion');
     await this.botService.confirmUserInGroup(ctx.from.id);
     await ctx.answerCbQuery();
+    this.upWeb();
   }
 
   @Start()
@@ -171,6 +182,7 @@ export class TelegramGateway {
     console.log('@Start');
     await this.userService.createUserOrUpdateUser(ctx.from);
     await this.botService.startMessage(ctx.from.id);
+    this.upWeb();
   }
 
   @On('photo')
@@ -282,48 +294,6 @@ export class TelegramGateway {
     }
     console.log(await this.userService.getUser(ctx.from.id));
   }
-
-  // @On('chat_member')
-  // async onChatMemberUpdate(
-  //   @Ctx() ctx: NarrowedContext<Context, UpdateTelegraf.ChatMemberUpdate>,
-  // ) {
-  //   const update = ctx.update.chat_member;
-  //   const user = update.new_chat_member.user;
-  //   const chatId = update.chat.id;
-
-  //   if (!user || !chatId || update.new_chat_member.status !== 'member') return;
-
-  //   const telegramId = user.id;
-
-  //   // Проверка оплаты через сервис доступа
-  //   const hasAccess = true; //await this.accessService.hasAccess(telegramId) || true;
-
-  //   if (!hasAccess) {
-  //     // Удаляем пользователя, если нет доступа
-  //     await ctx.telegram.banChatMember(chatId, telegramId);
-  //     await ctx.telegram.unbanChatMember(chatId, telegramId);
-  //     await ctx.telegram.sendMessage(
-  //       telegramId,
-  //       '❌ У вас нет доступа. Оплатите подписку, чтобы вступить в канал.',
-  //     );
-  //   } else {
-  //     // Можно отправить приветствие, если хочешь
-  //     await ctx.telegram.sendMessage(
-  //       telegramId,
-  //       '👋 Добро пожаловать в канал!',
-  //     );
-  //   }
-  // }
-
-  // @Hears('hi')
-  // async hears(@Ctx() ctx: Context) {
-  //   await ctx.reply('get hi');
-  // }
-
-  // @On('photo')
-  // async addNewOrderImages(@Ctx() ctx: Context) {
-  //   await ctx.reply('get photo');
-  // }
 
   @Action('closeAccess')
   @UseGuards(AdminGuardAccess)

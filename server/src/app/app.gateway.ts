@@ -16,6 +16,7 @@ import { EditRegUsers } from './interfaces/editRegUsers';
 import { BotService } from 'src/bot/bot.service';
 import { AppService } from './app.service';
 import { EditPaymentMetods } from './interfaces/editPaymentMetods';
+import { TelegramGateway } from 'src/bot/bot.telegramgateway';
 
 @WebSocketGateway({
   cors: {
@@ -27,9 +28,10 @@ export class AppGateway
 {
   constructor(
     private readonly socketAuthMiddleware: SocketAuthMiddleware,
-    private groupService: GroupService,
+    private readonly groupService: GroupService,
     private botService: BotService,
-    private appService: AppService,
+    private readonly appService: AppService,
+    private readonly telegramGatewayService: TelegramGateway,
   ) {}
   @WebSocketServer()
   server: Server;
@@ -41,6 +43,7 @@ export class AppGateway
       this.socketAuthMiddleware.use(socket, next);
     });
     this.logger.log('Socket server initialized');
+    this.telegramGatewayService.setAppGateway(this);
   }
 
   handleConnection(client: Socket) {
@@ -51,6 +54,11 @@ export class AppGateway
     //     `onAny -> [${event}] from ${client.id}: ${JSON.stringify(args)}`,
     //   );
     // });
+  }
+
+  upData() {
+    console.log('upData');
+    this.server.emit('upData', Date.now());
   }
 
   handleDisconnect(client: Socket) {
@@ -146,12 +154,35 @@ export class AppGateway
     };
   }
 
+  @SubscribeMessage('deleteGroup')
+  @UseGuards(WsJwtAuthGuard)
+  async handleDeleteGroup(client: Socket, payload: string): Promise<any> {
+    const res = await this.groupService.deleteGroup(payload);
+    if (!res) return { success: false, message: 'Ошибка' };
+    return { success: true, message: 'ОК', group: res._id };
+  }
+
   @SubscribeMessage('getGroups')
   @UseGuards(WsJwtAuthGuard)
   async handleGetGroups(): Promise<any> {
     const res = await this.groupService.getGroups();
     if (!res) return { success: false, message: 'Группы не загружены' };
     return { success: true, message: 'Группы получены', groups: res };
+  }
+
+  @SubscribeMessage('updateGroupSettings')
+  @UseGuards(WsJwtAuthGuard)
+  async handleUpdateGroupSettings(
+    client: Socket,
+    payload: { groupId: string; data: Group },
+  ): Promise<any> {
+    console.log(payload);
+    const res = await this.groupService.updateGroupSettings(
+      payload.groupId,
+      payload.data,
+    );
+    if (!res) return { success: false, message: 'Группа не обновлена' };
+    return { success: true, message: 'Группа обновлена', group: res };
   }
 
   @SubscribeMessage('createNewGroup')

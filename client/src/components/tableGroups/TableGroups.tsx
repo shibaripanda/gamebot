@@ -1,4 +1,4 @@
-import { Accordion, Container, Group as GroupMantine, Group as MantineGroup, Slider } from '@mantine/core';
+import { Accordion, Container, Group as GroupMantine, Group as MantineGroup } from '@mantine/core';
 import classes from './TableGroups.module.css';
 import { Group } from '../../pages/dashboardPage/interfaces/group';
 import { GroupTable } from '../groupTable/GroupTable';
@@ -8,9 +8,11 @@ interface GroupsProps {
   groups: Group[];
   editRegUsers: any;
   paymentsMetods: PaymentMetod[];
+  updateGroupSettings: any;
+  deleteGroup: any;
 }
 
-export function TableGroups({groups, editRegUsers, paymentsMetods }: GroupsProps) {
+export function TableGroups({groups, editRegUsers, paymentsMetods, updateGroupSettings, deleteGroup }: GroupsProps) {
 
     if(!groups.length) return
 
@@ -43,6 +45,8 @@ export function TableGroups({groups, editRegUsers, paymentsMetods }: GroupsProps
                         groupId={gr._id}
                         paymentsMetods={paymentsMetods}
                         group={gr}
+                        updateGroupSettings={updateGroupSettings}
+                        deleteGroup={deleteGroup}
                         />
                     </Accordion.Panel>
                 </Accordion.Item>

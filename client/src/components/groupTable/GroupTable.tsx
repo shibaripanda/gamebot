@@ -15,10 +15,12 @@ interface UserProps {
   groupId: string;
   paymentsMetods: PaymentMetod[];
   group: Group;
+  updateGroupSettings: any;
+  deleteGroup: any;
 }
 export type Actions = 'Delete' | 'Confirm' | 'Unconfirm' | 'Aliance' | false
 
-export function GroupTable({users, editRegUsers, groupId, paymentsMetods, group }: UserProps) {
+export function GroupTable({users, editRegUsers, groupId, paymentsMetods, group, updateGroupSettings, deleteGroup }: UserProps) {
   const [selection, setSelection] = useState<string[]>([]);
   const [сonfirmModal, topConfirmModal] = useDisclosure(false);
   const [action, setAction] = useState<Actions>(false)
@@ -108,7 +110,7 @@ export function GroupTable({users, editRegUsers, groupId, paymentsMetods, group 
               Unconfirm
             </Button>
             <Button
-            disabled={users.filter(user => user && user.confirmation).length !== 2}
+            disabled={users.filter(user => user && user.confirmation).length !== group.maxCountUsersInGroup}
             onClick={() => {
               setSelection([...users.filter(user => user.byByKruger === true).map(user => user._id)]);
               setAction('Aliance')
@@ -147,6 +149,8 @@ export function GroupTable({users, editRegUsers, groupId, paymentsMetods, group 
     settingsmModal={settingsmModal} 
     settingsmModalUse={settingsmModalUse}
     group={group}
+    updateGroupSettings={updateGroupSettings}
+    deleteGroup={deleteGroup}
     />
     <ConfirmModal 
     сonfirmModal={сonfirmModal} 

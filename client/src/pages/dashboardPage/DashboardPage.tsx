@@ -45,8 +45,10 @@ export function DashboardPage() {
       console.log('Connected', socket.id);
       setIsSocketConnected(true);
     });
-    socket.on('message', (msg) => {
-      console.log('Message:', msg);
+    socket.on('upData', (group) => {
+      console.log('updateGroup:', group);
+      getGroups()
+      getPamentMetods()
     });
     socket.on('connect_error', (err) => {
       console.error('Connection error:', err.message);
@@ -74,6 +76,41 @@ export function DashboardPage() {
       setGroups(ex => {return [response.group, ...ex]})
     });
 
+  }
+
+  const deleteGroup = (groupId : string) => {
+    if (!isSocketConnected) return;
+    socketRef.current.emit('deleteGroup', groupId, (response: {success: boolean, message: string, group: string}) => {
+      if(!response.success) return
+      console.log(response)
+      setGroups(ex =>
+        ex.filter(group =>
+          group._id !== response.group
+        )
+      )
+    });
+  }
+
+  const socketGetUpdates = (group: Group) => {
+    setGroups(ex =>
+      ex.map(gr =>
+        gr._id === group._id ? group : gr
+      )
+    )
+  }
+
+  const updateGroupSettings = (data: object) => {
+    if (!isSocketConnected) return;
+    console.log(data)
+     socketRef.current.emit('updateGroupSettings', data, (response: GetGroup) => {
+      if(!response.success) return
+      console.log(response.group)
+      setGroups(ex =>
+        ex.map(group =>
+          group._id === response.group._id ? response.group : group
+        )
+      )
+    });
   }
 
   const getPamentMetods = () => {
@@ -148,8 +185,12 @@ export function DashboardPage() {
           />
         </MantineGroup>
       </Center>
-      <TableGroups editRegUsers={editRegUsers} paymentsMetods={paymentsMetods}
-        groups={[...filteredGroups].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())}
+      <TableGroups 
+      editRegUsers={editRegUsers} 
+      paymentsMetods={paymentsMetods} 
+      updateGroupSettings={updateGroupSettings}
+      deleteGroup={deleteGroup}
+      groups={[...filteredGroups].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())}
       />
       </>
     );
