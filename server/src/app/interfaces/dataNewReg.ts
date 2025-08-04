@@ -1,4 +1,6 @@
 export interface DataNewReg {
+  screenNoPromo: string;
+  kruger: boolean;
   groupId: string;
   messageIdInTelegramGroup?: number;
   status: boolean;

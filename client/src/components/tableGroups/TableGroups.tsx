@@ -1,4 +1,4 @@
-import { Accordion, Container, Group as GroupMantine, Group as MantineGroup } from '@mantine/core';
+import { Accordion, Container, Group as GroupMantine, Group as MantineGroup, Slider } from '@mantine/core';
 import classes from './TableGroups.module.css';
 import { Group } from '../../pages/dashboardPage/interfaces/group';
 import { GroupTable } from '../groupTable/GroupTable';
@@ -17,7 +17,7 @@ export function TableGroups({groups, editRegUsers, paymentsMetods }: GroupsProps
     const fullEmptyGroup = (group: Group) => {
         return (
             <>
-            {group.users.filter(user => user && user.status === true).length} / {group.maxCountUsersInGroup}
+            {group.users.filter(user => user && user.status === true).length} / {group.maxCountUsersInGroupForKruger} / {group.maxCountUsersInGroup}
             </>
         )
     }
@@ -32,7 +32,7 @@ export function TableGroups({groups, editRegUsers, paymentsMetods }: GroupsProps
                     <Accordion.Control>
                         <MantineGroup>
                            <GroupMantine justify="space-between">
-                            {gr.name} 🔸 {gr.promo} 🔸 {gr.aliance} 🔸 {fullEmptyGroup(gr)}
+                            {gr.name} 🔸 {gr.promo} 🔸 {gr.aliance} 🔸 {gr.prefix} 🔸 {fullEmptyGroup(gr)}
                             </GroupMantine>
                         </MantineGroup>
                         </Accordion.Control>
@@ -42,6 +42,7 @@ export function TableGroups({groups, editRegUsers, paymentsMetods }: GroupsProps
                         editRegUsers={editRegUsers} 
                         groupId={gr._id}
                         paymentsMetods={paymentsMetods}
+                        group={gr}
                         />
                     </Accordion.Panel>
                 </Accordion.Item>

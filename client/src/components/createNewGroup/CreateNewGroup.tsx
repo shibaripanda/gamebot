@@ -1,5 +1,5 @@
 import { useDisclosure } from '@mantine/hooks';
-import { Modal, Button, Center, TextInput, Stack, Space } from '@mantine/core';
+import { Modal, Button, TextInput, Stack, Space } from '@mantine/core';
 import { NewGroup } from '../../pages/dashboardPage/interfaces/newGroup';
 
 interface CreateNewGroupModalProps {
@@ -17,8 +17,7 @@ export function CreateNewGroupModal({ newGroup, setNewGroup, createNewGroup, exi
       <Modal opened={opened} onClose={close} title="Создать группу">
         <Stack gap="sm">
           <TextInput
-            c={existGroupNames.includes(newGroup.name) ? 'red' : 'black'} 
-            label="Название группы" 
+            label={existGroupNames.includes(newGroup.name) ? '⚠️ Уже существует' : 'Название группы'}
             placeholder="Введите название группы"
             value={newGroup.name}
             onChange={(e) => setNewGroup(prev => ({ ...prev, name: e.target.value }))}
@@ -35,9 +34,15 @@ export function CreateNewGroupModal({ newGroup, setNewGroup, createNewGroup, exi
             value={newGroup.aliance}
             onChange={(e) => setNewGroup(prev => ({ ...prev, aliance: e.target.value }))}
           />
+          <TextInput 
+            label="Пефикс для юзеров" 
+            placeholder="Введите префикс"
+            value={newGroup.prefix}
+            onChange={(e) => setNewGroup(prev => ({ ...prev, prefix: e.target.value }))}
+          />
           <Space h="sm" />
           <Button
-           disabled={existGroupNames.includes(newGroup.name) || !newGroup.promo || !newGroup.aliance}
+           disabled={existGroupNames.includes(newGroup.name) || !newGroup.promo || !newGroup.aliance || !newGroup.prefix}
            onClick={
             () => createNewGroup(close)
             }>

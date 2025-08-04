@@ -86,33 +86,39 @@ export class TelegramGateway {
     await ctx.answerCbQuery();
   }
 
-  @Action('buyByMeStartReg')
-  async buyByMeStartReg(@Ctx() ctx: UserTelegrafContext) {
-    console.log('@Action buyByMeStartReg');
-    // await this.userService.addRegData(
-    //   ctx.from.id,
-    //   'next_step_data',
-    //   'reg_gameName',
-    // );
-    await this.botService.startRegistrationByMe(ctx.from.id);
-    await ctx.answerCbQuery();
+  @Action(/^buyByMeStartReg:(.+)$/)
+  async buyByMeStartReg(@Ctx() ctx: Context) {
+    if (ctx.from) {
+      const callbackQuery = ctx.callbackQuery as CallbackQuery.DataQuery;
+      const match = callbackQuery.data.match(/^buyByMeStartReg:(.+)$/);
+      if (!match) {
+        await ctx.answerCbQuery('Некорректная кнопка', { show_alert: true });
+        return;
+      }
+      await this.botService.startRegistrationByMe(ctx.from.id, match[1]);
+      await ctx.answerCbQuery();
+    }
   }
 
-  @Action('buyByMe')
-  async buyByMe(@Ctx() ctx: UserTelegrafContext) {
+  @Action(/^buyByMe:(.+)$/)
+  async buyByMe(@Ctx() ctx: Context) {
     console.log('@Action buyByMe');
-    // await this.userService.addRegData(
-    //   ctx.from.id,
-    //   'next_step_data',
-    //   'reg_gameName',
-    // );
-    await this.botService.buyByMe(ctx.from.id);
-    await ctx.answerCbQuery();
+    if (ctx.from) {
+      const callbackQuery = ctx.callbackQuery as CallbackQuery.DataQuery;
+      const match = callbackQuery.data.match(/^buyByMe:(.+)$/);
+      if (!match) {
+        await ctx.answerCbQuery('Некорректная кнопка', { show_alert: true });
+        return;
+      }
+      await this.botService.buyByMe(ctx.from.id, match[1]);
+      await ctx.answerCbQuery();
+    }
   }
 
   @Action('takePlace')
   async takePlace(@Ctx() ctx: UserTelegrafContext) {
     console.log('@Action takePlace');
+    await this.userService.cleaeRegData(ctx.from.id);
     await this.botService.getGroupsButtonsList(ctx.from.id);
     await ctx.answerCbQuery();
   }
@@ -167,6 +173,70 @@ export class TelegramGateway {
     await this.botService.startMessage(ctx.from.id);
   }
 
+  @On('photo')
+  async addRegDataNoKruger(@Ctx() ctx: UserTelegrafContext) {
+    const user = await this.userService.getUser(ctx.from.id);
+    const message = ctx.message as Message.PhotoMessage;
+    if ('photo' in message && user && user.next_step_data && user.reg_groupId) {
+      const photos = message.photo;
+      const highestQualityPhoto = photos[photos.length - 1];
+      const fileId = highestQualityPhoto.file_id;
+
+      if (user.next_step_data === 'reg_screenNoPromo') {
+        await this.userService.addRegData(
+          ctx.from.id,
+          user.next_step_data,
+          fileId,
+        );
+        await this.userService.addRegData(
+          ctx.from.id,
+          'next_step_data',
+          'reg_gameName',
+        );
+        console.log('ask');
+        await this.botService.askGameName(ctx.from.id);
+      }
+    }
+    console.log(await this.userService.getUser(ctx.from.id));
+  }
+
+  @On('document')
+  async addRegDataWithFile(@Ctx() ctx: UserTelegrafContext) {
+    const user = await this.userService.getUser(ctx.from.id);
+    const message = ctx.message as Message.DocumentMessage;
+
+    if (
+      'document' in message &&
+      user &&
+      user.next_step_data &&
+      user.reg_groupId
+    ) {
+      const document = message.document;
+      const fileId = document.file_id;
+
+      // Допустим, ты ожидаешь PDF на шаге reg_docUpload
+      if (user.next_step_data === 'reg_screenNoPromo') {
+        await this.userService.addRegData(
+          ctx.from.id,
+          user.next_step_data,
+          fileId,
+        );
+
+        // Обновляем шаг
+        await this.userService.addRegData(
+          ctx.from.id,
+          'next_step_data',
+          'reg_gameName',
+        );
+
+        // Задаём следующий вопрос
+        await this.botService.askGameName(ctx.from.id);
+      }
+    }
+
+    console.log(await this.userService.getUser(ctx.from.id));
+  }
+
   @On('text')
   async addRegData(@Ctx() ctx: UserTelegrafContext) {
     const user = await this.userService.getUser(ctx.from.id);
@@ -194,7 +264,11 @@ export class TelegramGateway {
           'next_step_data',
           'reg_email',
         );
-        await this.botService.askEmail(ctx.from.id);
+        if (user.reg_screenNoPromo) {
+          await this.botService.confirmationNoKruger(ctx.from.id);
+        } else {
+          await this.botService.askEmail(ctx.from.id);
+        }
       } else if (user.next_step_data === 'reg_email') {
         await this.userService.addRegData(
           ctx.from.id,

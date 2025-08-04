@@ -47,6 +47,11 @@ export const UserSchema = new mongoose.Schema(
       require: true,
       default: '',
     },
+    reg_screenNoPromo: {
+      type: String,
+      require: true,
+      default: '',
+    },
     next_step_data: {
       type: String,
       require: true,
@@ -66,6 +71,7 @@ export interface User {
   reg_email?: string;
   reg_password?: string;
   reg_groupId?: string;
+  reg_screenNoPromo?: string;
   next_step_data?: string;
 }
 

@@ -63,6 +63,10 @@ export const GroupSchema = new mongoose.Schema(
       type: String,
       require: true,
     },
+    prefix: {
+      type: String,
+      require: true,
+    },
     users: {
       type: [UserInGroupSchema],
       default: [],
@@ -71,6 +75,11 @@ export const GroupSchema = new mongoose.Schema(
     maxCountUsersInGroup: {
       type: Number,
       default: 30,
+      require: true,
+    },
+    maxCountUsersInGroupForKruger: {
+      type: Number,
+      default: 15,
       require: true,
     },
     messageIdInTelegramGroup: {
@@ -93,6 +102,7 @@ export interface UserInGroup {
   byByKruger: boolean;
   imagePromoForReg: string;
   confirmation: boolean;
+  screenNoPromo: string;
 }
 
 export interface Group {
@@ -100,9 +110,11 @@ export interface Group {
   name: string;
   promo: string;
   aliance: string;
+  prefix: string;
   users: (UserInGroup | null)[];
   maxCountUsersInGroup: number;
   messageIdInTelegramGroup?: number;
+  maxCountUsersInGroupForKruger: number;
 }
 
 export type GroupDocument = Group & mongoose.Document;

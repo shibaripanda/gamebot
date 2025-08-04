@@ -23,6 +23,7 @@ export class UserService {
         reg_email: '',
         reg_password: '',
         reg_groupId: '',
+        reg_screenNoPromo: '',
       },
       { returnDocument: 'after' },
     );

@@ -1,24 +1,28 @@
 import { useState } from 'react';
 import cx from 'clsx';
-import { Button, Checkbox, Group, ScrollArea, Space, Table, Text } from '@mantine/core';
+import { Button, Checkbox, Group as MantineGroup, ScrollArea, Space, Table, Text } from '@mantine/core';
 import classes from './GroupTable.module.css';
 import { RegUser } from '../../pages/dashboardPage/interfaces/user';
 import { useDisclosure } from '@mantine/hooks';
 import { ConfirmModal } from '../confirmModal/ConfirmModal';
 import { PaymentMetod } from '../../pages/dashboardPage/interfaces/paymentMedod';
+import { Group } from '../../pages/dashboardPage/interfaces/group';
+import { SettingsModal } from '../settingsModal/SettingsModal';
 
 interface UserProps {
   users: RegUser[];
   editRegUsers: any;
   groupId: string;
   paymentsMetods: PaymentMetod[];
+  group: Group;
 }
 export type Actions = 'Delete' | 'Confirm' | 'Unconfirm' | 'Aliance' | false
 
-export function GroupTable({users, editRegUsers, groupId, paymentsMetods }: UserProps) {
+export function GroupTable({users, editRegUsers, groupId, paymentsMetods, group }: UserProps) {
   const [selection, setSelection] = useState<string[]>([]);
   const [сonfirmModal, topConfirmModal] = useDisclosure(false);
   const [action, setAction] = useState<Actions>(false)
+  const [settingsmModal, settingsmModalUse] = useDisclosure(false);
 
   function formatDateOrTime(input: Date | string | number): string {
   const date = new Date(input);
@@ -63,8 +67,14 @@ export function GroupTable({users, editRegUsers, groupId, paymentsMetods }: User
   return (
     <>
     <ScrollArea>
-
-        <Group justify="flex-end">
+        <MantineGroup justify="space-between">
+          <Button
+          variant='default'
+          onClick={settingsmModalUse.open}
+          >
+            Settings
+          </Button>
+          <MantineGroup justify="flex-end">
             <Text>
               {selection.length ? selection.length + ' user (s)' : ''}
             </Text>
@@ -107,7 +117,8 @@ export function GroupTable({users, editRegUsers, groupId, paymentsMetods }: User
             >
               Aliance
             </Button>   
-        </Group>
+          </MantineGroup>
+        </MantineGroup>
         <Space h='xl'/>
         <Table miw={800} verticalSpacing="sm">
             <Table.Thead>
@@ -132,6 +143,11 @@ export function GroupTable({users, editRegUsers, groupId, paymentsMetods }: User
             <Table.Tbody>{rows}</Table.Tbody>
         </Table>
     </ScrollArea>
+    <SettingsModal 
+    settingsmModal={settingsmModal} 
+    settingsmModalUse={settingsmModalUse}
+    group={group}
+    />
     <ConfirmModal 
     сonfirmModal={сonfirmModal} 
     topConfirmModal={topConfirmModal} 

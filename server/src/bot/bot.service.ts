@@ -91,15 +91,35 @@ export class BotService {
       await this.getGroupsButtonsList(userId);
       return;
     }
-    const res = await this.groupService.addUserToGroup(groupId, userId);
+    const res = await this.groupService.isUnconfirmedUserInTopHalf(
+      groupId,
+      userId,
+    );
     if (!res) {
       console.log('soldOut');
       await this.soldOutMessage(userId);
       return;
     }
     await this.userService.addRegData(userId, 'reg_groupId', groupId);
-    // await this.userService.addRegData(userId, 'next_step_data', 'reg_gameName');
-    await this.firstStepReg(userId);
+    await this.userService.addRegData(
+      userId,
+      'next_step_data',
+      'reg_screenNoPromo',
+    );
+    await this.firstStepRegNoKruger(userId);
+  }
+
+  async firstStepRegNoKruger(userId: number) {
+    const buttons = [[{ text: 'Вернуться назад', callback_data: 'mainMenu' }]];
+    await this.bot.telegram.sendMessage(
+      userId,
+      `Хорошо, следующим шагом необходимо прислать сюда скриншот экрана для подтверждения того, что данная акция еще не куплена.`,
+      {
+        reply_markup: {
+          inline_keyboard: buttons,
+        },
+      },
+    );
   }
 
   async startRegistration(userId: number, groupId: string) {
@@ -117,12 +137,17 @@ export class BotService {
     }
     await this.userService.addRegData(userId, 'reg_groupId', groupId);
     // await this.userService.addRegData(userId, 'next_step_data', 'reg_gameName');
-    await this.firstStepReg(userId);
+    await this.firstStepReg(userId, groupId);
   }
 
-  async buyByMe(userId: number) {
+  async buyByMe(userId: number, groupId: string) {
     const buttons = [
-      [{ text: 'Честно покупаю сам', callback_data: 'buyByMeStartReg' }],
+      [
+        {
+          text: 'Честно покупаю сам',
+          callback_data: `buyByMeStartReg:${groupId}`,
+        },
+      ],
       [{ text: 'В начало', callback_data: 'mainMenu' }],
     ];
     await this.bot.telegram.sendMessage(
@@ -138,10 +163,10 @@ export class BotService {
     );
   }
 
-  async firstStepReg(userId: number) {
+  async firstStepReg(userId: number, groupId: string) {
     const buttons = [
       [{ text: 'Покупаю через тебя', callback_data: 'reg_gameName' }],
-      [{ text: 'Буду покупать сам', callback_data: 'buyByMe' }],
+      [{ text: 'Буду покупать сам', callback_data: `buyByMe:${groupId}` }],
       [{ text: 'Вернуться назад', callback_data: 'mainMenu' }],
     ];
     await this.bot.telegram.sendMessage(
@@ -187,6 +212,80 @@ export class BotService {
     await this.bot.telegram.sendMessage(userId, message, {
       reply_markup: { inline_keyboard: buttons },
     });
+  }
+
+  async confirmationNoKruger(userId: number) {
+    const res: DataNewReg | null =
+      await this.groupService.confirmUserInGroupNoKruger(userId);
+    console.log(res, 'тут');
+    await this.userService.cleaeRegData(userId);
+    if (!res) {
+      return;
+    }
+    const buttons = [
+      [{ text: 'Чат закупок', callback_data: '!!!!!!!!!!' }],
+      [{ text: 'В начало', callback_data: 'mainMenu' }],
+    ];
+    await this.bot.telegram.sendMessage(
+      userId,
+      `Поздравляю! Вы записались в группу! Название альянса придет сюда как только заполнится группа и мы всех проверим. За ходом записи вы можете следить в чате закупки. Ваше кодовое имя: <b>${res.anonName}</b>:( Если по каким-либо причинам вы хотите удалиться из записи, то напишите в личные сообщения @crygerm`,
+      {
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: buttons,
+        },
+      },
+    );
+    const message = [
+      `Регистрация: <code>${res.name}</code> ${res.kruger ? 'Kruger' : 'Сам'}`,
+      '',
+      `😊 @${res.username}`,
+      `🪪 <code>${res.promo}</code>`,
+      `🥸 <code>${res.anonName}</code>`,
+      `🎮 <code>${res.gameName}</code>`,
+    ].join('\n');
+    // await this.bot.telegram.sendMessage(
+    //   this.config.get<number>('GROUP_TELEGRAM_CLOSE')!,
+    //   message,
+    //   {
+    //     parse_mode: 'HTML',
+    //   },
+    // );
+    await this.sendFileByFileId(res.screenNoPromo, message);
+    await this.sendOrUpdateMessage(res.groupId, res.messageIdInTelegramGroup);
+  }
+
+  async sendFileByFileId(fileId: string, data: string): Promise<void> {
+    try {
+      const file = await this.bot.telegram.getFile(fileId);
+      const filePath = file?.file_path?.toLowerCase() || '';
+      const chatId = this.config.get<number>('GROUP_TELEGRAM_CLOSE')!;
+
+      if (
+        filePath.endsWith('.jpg') ||
+        filePath.endsWith('.jpeg') ||
+        filePath.endsWith('.png') ||
+        filePath.endsWith('.webp')
+      ) {
+        await this.bot.telegram.sendPhoto(chatId, fileId, {
+          caption: data,
+          parse_mode: 'HTML',
+        });
+      } else if (filePath.endsWith('.pdf')) {
+        await this.bot.telegram.sendDocument(chatId, fileId, {
+          caption: data,
+          parse_mode: 'HTML',
+        });
+      } else {
+        await this.bot.telegram.sendDocument(chatId, fileId, {
+          caption: data,
+          parse_mode: 'HTML',
+        });
+      }
+    } catch (error) {
+      console.error('Ошибка при отправке файла:', error);
+      throw new Error('Не удалось отправить файл по file_id.');
+    }
   }
 
   async askPassword(userId: number) {
@@ -336,7 +435,7 @@ export class BotService {
       },
     );
     const message = [
-      `Регистрация: <code>${res.name}</code>`,
+      `Регистрация: <code>${res.name}</code> ${res.kruger ? 'Kruger' : 'Сам'}`,
       '',
       `😊 @${res.username}`,
       `🪪 <code>${res.promo}</code>`,
@@ -353,34 +452,10 @@ export class BotService {
       },
     );
     await this.sendOrUpdateMessage(res.groupId, res.messageIdInTelegramGroup);
-    // const list = await this.getListUsersOfGroup(res.groupId);
-    // if (!res.messageIdInTelegramGroup) {
-    //   await this.sendMessageToGroup(list, res.groupId);
-    //   return;
-    // }
-    // await this.bot.telegram
-    //   .editMessageText(
-    //     this.config.get<number>('GROUP_TELEGRAM_OPEN'),
-    //     res.messageIdInTelegramGroup,
-    //     undefined,
-    //     list,
-    //     { parse_mode: 'HTML' },
-    //   )
-    //   .catch(async (error) => {
-    //     if (
-    //       error instanceof Error &&
-    //       'response' in error &&
-    //       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    //       (error as any).response?.error_code === 400
-    //     ) {
-    //       await this.sendMessageToGroup(list, res.groupId);
-    //     } else {
-    //       throw error; // другие ошибки пробрасываем
-    //     }
-    //   });
   }
 
   async sendOrUpdateMessage(groupId: string, messageId: number | undefined) {
+    console.log('попытка');
     const list = await this.getListUsersOfGroup(groupId);
     if (!messageId) {
       await this.sendMessageToGroup(list, groupId);
@@ -395,6 +470,7 @@ export class BotService {
         { parse_mode: 'HTML' },
       )
       .catch(async (error) => {
+        console.log('ошибка обновления');
         if (
           error instanceof Error &&
           'response' in error &&

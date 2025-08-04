@@ -48,6 +48,65 @@ export class GroupService {
     return this.groupMongo.findById(groupId);
   }
 
+  async confirmUserInGroupNoKruger(userId: number): Promise<DataNewReg | null> {
+    const user = await this.userService.getUser(userId);
+    if (!user) return null;
+
+    const group = await this.groupMongo.findById(user.reg_groupId);
+    if (!group) return null;
+
+    const users: (UserInGroup | null)[] = group.users || [];
+
+    const targetIndex = users.findIndex(
+      (u) => u?.telegramId === userId && u.status === false,
+    );
+
+    if (targetIndex === -1) return null;
+
+    const anonName =
+      `${group.prefix}${targetIndex + 1}` + this.getRandomSmile();
+    const fieldPath = `users.${targetIndex}`;
+
+    const updateRes = await this.groupMongo.updateOne(
+      { _id: user.reg_groupId },
+      {
+        $set: {
+          [`${fieldPath}.status`]: true,
+          [`${fieldPath}.gameName`]: user.reg_gameName,
+          [`${fieldPath}.email`]: '',
+          [`${fieldPath}.password`]: '',
+          [`${fieldPath}.anonName`]: anonName,
+          [`${fieldPath}.byByKruger`]: false,
+          [`${fieldPath}.imagePromoForReg`]: user.reg_screenNoPromo,
+        },
+      },
+    );
+
+    if (updateRes.modifiedCount === 0) return null;
+
+    const updatedGroup = await this.groupMongo.findById(user.reg_groupId);
+    const updatedUser = updatedGroup?.users?.[targetIndex];
+    console.log(updatedUser, 'ssssssssssssss');
+
+    if (!updatedUser) return null;
+
+    return {
+      screenNoPromo: updatedUser.imagePromoForReg,
+      kruger: updatedUser.byByKruger,
+      groupId: group._id,
+      messageIdInTelegramGroup: updatedGroup.messageIdInTelegramGroup,
+      status: updatedUser.status,
+      date: updatedUser.date,
+      anonName: anonName,
+      email: updatedUser.email,
+      gameName: updatedUser.gameName,
+      password: updatedUser.password,
+      username: user.username,
+      promo: updatedGroup.promo,
+      name: updatedGroup.name,
+    };
+  }
+
   async confirmUsersInGroup(
     groupId: string,
     userInGroupIds: string[],
@@ -107,6 +166,23 @@ export class GroupService {
       { _id: groupId },
       { messageIdInTelegramGroup: messageId },
     );
+  }
+
+  async isUnconfirmedUserInTopHalf(
+    groupId: string,
+    userId: number,
+  ): Promise<boolean> {
+    const group = await this.groupMongo.findById(groupId);
+    if (!group || !group.users) return false;
+
+    const index = group.users.findIndex(
+      (u) =>
+        u?.telegramId === userId &&
+        u.status === false &&
+        u.byByKruger === false,
+    );
+
+    return index >= 0 && index <= group.maxCountUsersInGroupForKruger - 1;
   }
 
   async addUserToGroup(groupId: string, userId: number): Promise<boolean> {
@@ -178,7 +254,7 @@ export class GroupService {
     if (targetIndex === -1) return null;
 
     const anonName =
-      `Аноним${this.getRandomTwoDigitNumber()}` + this.getRandomSmile();
+      `${group.prefix}${targetIndex + 1}` + this.getRandomSmile();
     const fieldPath = `users.${targetIndex}`;
 
     const updateRes = await this.groupMongo.updateOne(
@@ -191,6 +267,7 @@ export class GroupService {
           [`${fieldPath}.password`]: user.reg_password,
           [`${fieldPath}.anonName`]: anonName,
           [`${fieldPath}.byByKruger`]: true,
+          [`${fieldPath}.imagePromoForReg`]: user.reg_screenNoPromo,
         },
       },
     );
@@ -204,6 +281,8 @@ export class GroupService {
     if (!updatedUser) return null;
 
     return {
+      screenNoPromo: updatedUser.imagePromoForReg,
+      kruger: updatedUser.byByKruger,
       groupId: group._id,
       messageIdInTelegramGroup: updatedGroup.messageIdInTelegramGroup,
       status: updatedUser.status,
@@ -281,7 +360,9 @@ export class GroupService {
     return users;
   }
 
-  async createGroup(newGroup: Pick<Group, 'name' | 'promo' | 'aliance'>) {
+  async createGroup(
+    newGroup: Pick<Group, 'name' | 'promo' | 'aliance' | 'prefix'>,
+  ) {
     return await this.groupMongo.create({
       ...newGroup,
     });
