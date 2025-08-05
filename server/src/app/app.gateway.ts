@@ -189,7 +189,7 @@ export class AppGateway
   @UseGuards(WsJwtAuthGuard)
   async handleCreateGroup(
     client: Socket,
-    payload: Pick<Group, 'name' | 'promo' | 'aliance' | 'prefix'>,
+    payload: Pick<Group, 'name' | 'promo' | 'aliance' | 'prefix' | 'present'>,
   ): Promise<any> {
     console.log(payload);
     this.logger.log(`Создание группы: ${JSON.stringify(payload)}`);

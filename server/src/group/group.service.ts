@@ -296,6 +296,34 @@ export class GroupService {
     };
   }
 
+  async getGroupsForButtonsPresent(): Promise<Group[]> {
+    const groups = await this.groupMongo.find({
+      hidden: false,
+      present: true,
+    });
+    const cleanedGroups: Group[] = [];
+    for (const group of groups) {
+      const cleanedUsers = await this.clearExpiredUsers(group._id);
+      group.users = cleanedUsers;
+      cleanedGroups.push(group);
+    }
+    return cleanedGroups;
+  }
+
+  async getGroupsForButtons(): Promise<Group[]> {
+    const groups = await this.groupMongo.find({
+      hidden: false,
+      present: false,
+    });
+    const cleanedGroups: Group[] = [];
+    for (const group of groups) {
+      const cleanedUsers = await this.clearExpiredUsers(group._id);
+      group.users = cleanedUsers;
+      cleanedGroups.push(group);
+    }
+    return cleanedGroups;
+  }
+
   async getGroups(): Promise<Group[]> {
     const groups = await this.groupMongo.find();
     const cleanedGroups: Group[] = [];
@@ -370,10 +398,18 @@ export class GroupService {
   }
 
   async createGroup(
-    newGroup: Pick<Group, 'name' | 'promo' | 'aliance' | 'prefix'>,
+    newGroup: Pick<Group, 'name' | 'promo' | 'aliance' | 'prefix' | 'present'>,
   ) {
+    console.log(newGroup);
+    if (!newGroup.present) {
+      return await this.groupMongo.create({
+        ...newGroup,
+        maxCountUsersInGroup: 30,
+      });
+    }
     return await this.groupMongo.create({
       ...newGroup,
+      maxCountUsersInGroup: 29,
     });
   }
 }

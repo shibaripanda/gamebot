@@ -3,4 +3,5 @@ export interface NewGroup {
     promo: string;
     aliance: string;
     prefix: string;
+    present: boolean;
 }

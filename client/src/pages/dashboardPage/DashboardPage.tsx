@@ -17,7 +17,7 @@ export function DashboardPage() {
   const navigate = useNavigate();
   const { colorScheme, setColorScheme } = useMantineColorScheme();
   const [isSocketConnected, setIsSocketConnected] = useState(false);
-  const [newGroup, setNewGroup] = useState<NewGroup>({name: '', promo: '', aliance: '', prefix: ''})
+  const [newGroup, setNewGroup] = useState<NewGroup>({name: '', promo: '', aliance: '', prefix: '', present: false})
   const [groups, setGroups] = useState<Group[]>([])
   const [search, setSearch] = useState('');
   const [paymentsMetods, setPaymentMetods] = useState<PaymentMetod[]>([])
@@ -71,7 +71,7 @@ export function DashboardPage() {
     if (!socketRef.current) return;
     socketRef.current.emit('createNewGroup', newGroup, (response: ServerResponce) => {
       if(!response.success) return
-      setNewGroup({name: '', promo: '', aliance: '', prefix: ''})
+      setNewGroup({name: '', promo: '', aliance: '', prefix: '', present: false})
       close()
       setGroups(ex => {return [response.group, ...ex]})
     });

@@ -494,8 +494,68 @@ export class BotService {
     return;
   }
 
+  async getGroupsButtonsListPresent(userId: number) {
+    const allGroups = await this.groupService.getGroupsForButtonsPresent();
+    const buttons = allGroups.map((gr) => {
+      const total = gr.maxCountUsersInGroup;
+
+      const allFilled = gr.users.filter((u) => u !== null);
+      const actualFilled = allFilled.length;
+
+      const hasReserved = gr.users.some(
+        (u) => u?.telegramId === userId && u.status === false,
+      );
+
+      const displayedCount = hasReserved
+        ? Math.max(actualFilled - 1, 0)
+        : actualFilled;
+
+      // Успешные регистрации пользователя
+      const confirmedRegs = gr.users.filter(
+        (u) => u?.telegramId === userId && u.status === true,
+      );
+
+      let suffix = '';
+      if (confirmedRegs.length > 0) {
+        suffix =
+          confirmedRegs.length === 1 ? ' 😊' : ` 😊×${confirmedRegs.length}`;
+      }
+
+      if (hasReserved) {
+        suffix += ' ⏳';
+      }
+
+      return [
+        {
+          text: `${gr.promo} (${displayedCount}/${total})${suffix}`,
+          callback_data: 'reservPlaceInGroup:' + gr._id,
+        },
+      ];
+    });
+    const pickTextForEmptyPresents = () => {
+      if (allGroups.length) {
+        buttons.push([{ text: 'За что подарки', callback_data: 'wtfPresent' }]);
+        buttons.push([
+          { text: 'Обновить', callback_data: 'takePlacePresent' },
+          { text: 'В начало', callback_data: 'mainMenu' },
+        ]);
+        return `Отлично в какую группу вас записать? Продолжая запись вы соглашаетесь на обработку ваших персональныхданных. Если вы не согласны то нажмите кнопку "В начало".`;
+      }
+      buttons.push([
+        { text: 'Обновить', callback_data: 'takePlacePresent' },
+        { text: 'В начало', callback_data: 'mainMenu' },
+      ]);
+      return `ТО- К сожалению, группа пока не создана или находится в разработке :( За дополнительной информацией обращайтесь к @crygerm`;
+    };
+    await this.bot.telegram.sendMessage(userId, pickTextForEmptyPresents(), {
+      reply_markup: {
+        inline_keyboard: buttons,
+      },
+    });
+  }
+
   async getGroupsButtonsList(userId: number) {
-    const allGroups = await this.groupService.getGroups();
+    const allGroups = await this.groupService.getGroupsForButtons();
     const buttons = allGroups.map((gr) => {
       const total = gr.maxCountUsersInGroup;
 
@@ -565,7 +625,7 @@ export class BotService {
             [
               {
                 text: 'Подарки от Крюгера',
-                callback_data: 'stopReciveMessages',
+                callback_data: 'takePlacePresent',
               },
             ],
             [

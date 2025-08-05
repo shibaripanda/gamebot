@@ -86,6 +86,16 @@ export const GroupSchema = new mongoose.Schema(
       type: Number,
       require: false,
     },
+    present: {
+      type: Boolean,
+      require: true,
+      default: false,
+    },
+    hidden: {
+      type: Boolean,
+      require: true,
+      default: true,
+    },
   },
   { timestamps: true },
 );
@@ -111,6 +121,8 @@ export interface Group {
   promo: string;
   aliance: string;
   prefix: string;
+  present: boolean;
+  hidden: boolean;
   users: (UserInGroup | null)[];
   maxCountUsersInGroup: number;
   messageIdInTelegramGroup?: number;

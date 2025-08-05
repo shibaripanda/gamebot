@@ -34,7 +34,7 @@ export function TableGroups({groups, editRegUsers, paymentsMetods, updateGroupSe
                     <Accordion.Control>
                         <MantineGroup>
                            <GroupMantine justify="space-between">
-                            {gr.name} 🔸 {gr.promo} 🔸 {gr.aliance} 🔸 {gr.prefix} 🔸 {fullEmptyGroup(gr)}
+                            {gr.hidden ? '⚪️' : '🟢'} 🔸 {gr.name} 🔸 {gr.promo} 🔸 {gr.aliance} 🔸 {gr.prefix} 🔸 {fullEmptyGroup(gr)}{gr.present ? ' 🔸 🎁' : ''}
                             </GroupMantine>
                         </MantineGroup>
                         </Accordion.Control>

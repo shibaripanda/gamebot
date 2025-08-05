@@ -7,6 +7,8 @@ export interface Group {
   aliance: string;
   prefix: string;
   users: RegUser[];
+  present: boolean;
+  hidden: boolean;
   createdAt: Date;
   maxCountUsersInGroup: number;
   telegramGroup?: number;

@@ -1,5 +1,5 @@
 import { useDisclosure } from '@mantine/hooks';
-import { Modal, Button, TextInput, Stack, Space } from '@mantine/core';
+import { Modal, Button, TextInput, Stack, Space, Checkbox, Text } from '@mantine/core';
 import { NewGroup } from '../../pages/dashboardPage/interfaces/newGroup';
 
 interface CreateNewGroupModalProps {
@@ -40,6 +40,14 @@ export function CreateNewGroupModal({ newGroup, setNewGroup, createNewGroup, exi
             value={newGroup.prefix}
             onChange={(e) => setNewGroup(prev => ({ ...prev, prefix: e.target.value }))}
           />
+          <Checkbox
+          label={'Подарок от Крюгера'}
+          checked={newGroup.present}
+          onChange={(event) => {
+            setNewGroup(prev => ({ ...prev, present: event.target.checked }))
+          }}
+          />
+          <Text>Будет создана группа на {newGroup.present ? '29' : '30'} пользователей</Text>
           <Space h="sm" />
           <Button
            disabled={existGroupNames.includes(newGroup.name) || !newGroup.promo || !newGroup.aliance || !newGroup.prefix}

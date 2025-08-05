@@ -1,4 +1,4 @@
-import { Button, Group as MantineGroup, Modal, Slider, Space, Text, TextInput } from '@mantine/core';
+import { Button, Group as MantineGroup, Modal, Slider, Space, Switch, Text, TextInput } from '@mantine/core';
 import { Group } from '../../pages/dashboardPage/interfaces/group';
 import { useState } from 'react';
 
@@ -15,11 +15,12 @@ export function SettingsModal({ settingsmModal, settingsmModalUse, group, update
   const [value, setValue] = useState(group.maxCountUsersInGroupForKruger);
   const [valueGroup, setValueGroup] = useState(group.maxCountUsersInGroup);
   const [groupNameForDelete, setGroupNameForDelete] = useState('');
+  const [onOff, setOnOff] = useState(group.hidden);
 
   const slider = () => {
       return (
         <>
-          <Text size="sm">Максимальное количество юзеров не Крюгера: {group.maxCountUsersInGroupForKruger}</Text>
+          <Text size="sm">Максимальное количество мест для не Крюгера: {group.maxCountUsersInGroupForKruger}</Text>
           <Slider
           color="blue"
           min={0}
@@ -39,7 +40,7 @@ export function SettingsModal({ settingsmModal, settingsmModalUse, group, update
    const sliderGlobal = () => {
       return (
         <>
-          <Text size="sm">Максимальное количество юзеров: {group.maxCountUsersInGroup}</Text>
+          <Text size="sm">Максимальное количество мест в группе: {group.maxCountUsersInGroup}</Text>
           <Slider
           color="blue"
           min={1}
@@ -56,10 +57,25 @@ export function SettingsModal({ settingsmModal, settingsmModalUse, group, update
       )
   }
 
+  const offOn = () => {
+    return (
+      <Switch 
+      size="lg" 
+      onLabel="ON" 
+      offLabel="OFF"
+      checked={onOff ? false : true}
+      onChange={(event) => setOnOff(!event.target.checked)} 
+      />
+    )
+  }
+
   return (
     <>
-      <Modal opened={settingsmModal} onClose={settingsmModalUse.close} title="Настройки">
-        <Text>{group.name}</Text>
+      <Modal opened={settingsmModal} onClose={settingsmModalUse.close} title={"Настройки"}>
+        <MantineGroup justify="space-between">
+          <Text>{group.name}</Text>
+          {offOn()}
+        </MantineGroup>
         <Space h='xl'/>
         <Space h='xl'/>
 
@@ -80,9 +96,14 @@ export function SettingsModal({ settingsmModal, settingsmModalUse, group, update
             Отмена
           </Button>
           <Button
-          disabled={value === group.maxCountUsersInGroupForKruger && valueGroup === group.maxCountUsersInGroup}
+          disabled={value === group.maxCountUsersInGroupForKruger && valueGroup === group.maxCountUsersInGroup && onOff === group.hidden}
           onClick={() => {
-            updateGroupSettings({groupId: group._id, data: {maxCountUsersInGroupForKruger: value, maxCountUsersInGroup: valueGroup }})
+            updateGroupSettings({groupId: group._id, data: 
+              {
+                maxCountUsersInGroupForKruger: value, 
+                maxCountUsersInGroup: valueGroup,
+                hidden: onOff,
+              }})
             settingsmModalUse.close()
           }}
           >

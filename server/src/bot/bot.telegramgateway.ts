@@ -125,6 +125,14 @@ export class TelegramGateway {
     }
   }
 
+  @Action('takePlacePresent')
+  async takePlacePresent(@Ctx() ctx: UserTelegrafContext) {
+    console.log('@Action takePlacePresent');
+    await this.userService.cleaeRegData(ctx.from.id);
+    await this.botService.getGroupsButtonsListPresent(ctx.from.id);
+    await ctx.answerCbQuery();
+  }
+
   @Action('takePlace')
   async takePlace(@Ctx() ctx: UserTelegrafContext) {
     console.log('@Action takePlace');
