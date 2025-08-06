@@ -7,6 +7,7 @@ import { Group } from 'src/group/group.model';
 import { GroupService } from 'src/group/group.service';
 import { UserService } from 'src/user/user.service';
 import { Telegraf } from 'telegraf';
+import { Message } from '@telegraf/types';
 
 @Injectable()
 export class BotService {
@@ -46,11 +47,21 @@ export class BotService {
       }
 
       try {
-        await this.bot.telegram.sendMessage(
-          user.telegramId,
-          `<b>${user.gameName} (${user.anonName})</b>\n💸 Реквизиты:\n ${payment.paymentData}`,
-          { parse_mode: 'HTML' },
-        );
+        await this.bot.telegram
+          .sendMessage(
+            user.telegramId,
+            `<b>${user.gameName} (${user.anonName})</b>\n💸 Реквизиты:\n ${payment.paymentData}`,
+            { parse_mode: 'HTML' },
+          )
+          .then(async (res: Message) => {
+            await this.updateLastMessageAndEditOldMessage(
+              user.telegramId,
+              res.message_id,
+            );
+          })
+          .catch((er) => {
+            console.log(er);
+          });
       } catch (err) {
         console.error(
           `Ошибка при отправке сообщения юзеру ${user.telegramId}`,
@@ -111,15 +122,69 @@ export class BotService {
 
   async firstStepRegNoKruger(userId: number) {
     const buttons = [[{ text: 'Вернуться назад', callback_data: 'mainMenu' }]];
-    await this.bot.telegram.sendMessage(
-      userId,
-      `Хорошо, следующим шагом необходимо прислать сюда скриншот экрана для подтверждения того, что данная акция еще не куплена.`,
-      {
-        reply_markup: {
-          inline_keyboard: buttons,
+    await this.bot.telegram
+      .sendMessage(
+        userId,
+        `Хорошо, следующим шагом необходимо прислать сюда скриншот экрана для подтверждения того, что данная акция еще не куплена.`,
+        {
+          reply_markup: {
+            inline_keyboard: buttons,
+          },
         },
-      },
+      )
+      .then(async (res: Message) => {
+        await this.updateLastMessageAndEditOldMessage(userId, res.message_id);
+      })
+      .catch((er) => {
+        console.log(er);
+      });
+  }
+
+  async startRegistrationPresent(userId: number, groupId: string) {
+    const group = await this.groupService.getGroup(groupId);
+    console.log(group);
+    if (!group) {
+      await this.getGroupsButtonsList(userId);
+      return;
+    }
+    const res = await this.groupService.addUserToGroup(groupId, userId);
+    if (!res) {
+      console.log('soldOutPresent');
+      await this.soldOutMessagePresent(userId);
+      return;
+    }
+    await this.userService.addRegData(userId, 'reg_groupId', groupId);
+    await this.userService.addRegData(
+      userId,
+      'next_step_data',
+      'reg_gameNamePresent',
     );
+    await this.firstStepRegPresent(userId);
+  }
+
+  async firstStepRegPresent(userId: number) {
+    const buttons = [
+      [
+        { text: 'Назад', callback_data: 'takePlacePresent' },
+        { text: 'В начало', callback_data: 'mainMenu' },
+      ],
+    ];
+    await this.bot.telegram
+      .sendMessage(
+        userId,
+        `Супер! Пора заполнить ваши данные. Напишите ваше имя в игре`,
+        {
+          reply_markup: {
+            inline_keyboard: buttons,
+          },
+        },
+      )
+      .then(async (res: Message) => {
+        await this.updateLastMessageAndEditOldMessage(userId, res.message_id);
+      })
+      .catch((er) => {
+        console.log(er);
+      });
   }
 
   async startRegistration(userId: number, groupId: string) {
@@ -137,7 +202,7 @@ export class BotService {
     }
     await this.userService.addRegData(userId, 'reg_groupId', groupId);
     // await this.userService.addRegData(userId, 'next_step_data', 'reg_gameName');
-    await this.firstStepReg(userId, groupId);
+    await this.firstStepReg(userId, groupId, group.image);
   }
 
   async buyByMe(userId: number, groupId: string) {
@@ -150,34 +215,79 @@ export class BotService {
       ],
       [{ text: 'В начало', callback_data: 'mainMenu' }],
     ];
-    await this.bot.telegram.sendMessage(
-      userId,
-      `Без проблем! Но есть ограничения:
+    await this.bot.telegram
+      .sendMessage(
+        userId,
+        `Без проблем! Но есть ограничения:
 1- По количеству мест. Вы должны успеть записаться в первых рядах, либо придется ждать следующий старт группы.
 2- Записываться к нам в закупки, покупая акцию не у нас, строго запрещено! Прошу, если вы покупаете не самостоятельно, а через другой сервис - не тратьте наше время. Мы узнаем.`,
-      {
-        reply_markup: {
-          inline_keyboard: buttons,
+        {
+          reply_markup: {
+            inline_keyboard: buttons,
+          },
         },
-      },
-    );
+      )
+      .then(async (res: Message) => {
+        await this.updateLastMessageAndEditOldMessage(userId, res.message_id);
+      })
+      .catch((er) => {
+        console.log(er);
+      });
   }
 
-  async firstStepReg(userId: number, groupId: string) {
+  async firstStepReg(userId: number, groupId: string, image: string) {
     const buttons = [
       [{ text: 'Покупаю через тебя', callback_data: 'reg_gameName' }],
       [{ text: 'Буду покупать сам', callback_data: `buyByMe:${groupId}` }],
       [{ text: 'Вернуться назад', callback_data: 'mainMenu' }],
     ];
-    await this.bot.telegram.sendMessage(
+    if (image) {
+      await this.bot.telegram
+        .sendPhoto(userId, image, {
+          caption: `Отлично! Теперь выберите как вы будете покупать акцию альянса.`,
+          reply_markup: {
+            inline_keyboard: buttons,
+          },
+        })
+        .then(async (res: Message.PhotoMessage) => {
+          await this.updateLastMessageAndEditOldMessage(userId, res.message_id);
+        })
+        .catch((err) => {
+          console.log('Ошибка при отправке фото:', err);
+        });
+    } else {
+      await this.bot.telegram
+        .sendMessage(
+          userId,
+          `Отлично! Теперь выберите как вы будете покупать акцию альянса.`,
+          {
+            reply_markup: {
+              inline_keyboard: buttons,
+            },
+          },
+        )
+        .then(async (res: Message.TextMessage) => {
+          await this.updateLastMessageAndEditOldMessage(userId, res.message_id);
+        })
+        .catch((err) => {
+          console.log('Ошибка при отправке сообщения:', err);
+        });
+    }
+  }
+
+  async updateLastMessageAndEditOldMessage(userId: number, messagId: number) {
+    const mesId: number | undefined = await this.userService.updateLastMessage(
       userId,
-      `Отлично! Теперь выберите как вы будете покупать акцию альянса. (и картинка акции)`,
-      {
-        reply_markup: {
-          inline_keyboard: buttons,
-        },
-      },
+      messagId,
     );
+    if (mesId)
+      await this.bot.telegram
+        .editMessageText(userId, mesId, undefined, '♻️.')
+        .catch(async () => {
+          await this.bot.telegram.deleteMessage(userId, mesId).catch((e) => {
+            console.log(e);
+          });
+        });
   }
 
   async confirmation(userId: number) {
@@ -209,9 +319,16 @@ export class BotService {
       [{ text: '✏️ Надо исправить', callback_data: 'takePlace' }],
     ];
 
-    await this.bot.telegram.sendMessage(userId, message, {
-      reply_markup: { inline_keyboard: buttons },
-    });
+    await this.bot.telegram
+      .sendMessage(userId, message, {
+        reply_markup: { inline_keyboard: buttons },
+      })
+      .then(async (res: Message) => {
+        await this.updateLastMessageAndEditOldMessage(userId, res.message_id);
+      })
+      .catch((er) => {
+        console.log(er);
+      });
   }
 
   async confirmationNoKruger(userId: number) {
@@ -223,19 +340,31 @@ export class BotService {
       return;
     }
     const buttons = [
-      [{ text: 'Чат закупок', callback_data: '!!!!!!!!!!' }],
+      [
+        {
+          text: 'В чат закупок',
+          url: this.config.get<string>('CHAT_ZAKUPOK')!,
+        },
+      ],
       [{ text: 'В начало', callback_data: 'mainMenu' }],
     ];
-    await this.bot.telegram.sendMessage(
-      userId,
-      `Поздравляю! Вы записались в группу! Название альянса придет сюда как только заполнится группа и мы всех проверим. За ходом записи вы можете следить в чате закупки. Ваше кодовое имя: <b>${res.anonName}</b>:( Если по каким-либо причинам вы хотите удалиться из записи, то напишите в личные сообщения @crygerm`,
-      {
-        parse_mode: 'HTML',
-        reply_markup: {
-          inline_keyboard: buttons,
+    await this.bot.telegram
+      .sendMessage(
+        userId,
+        `Поздравляю! Вы записались в группу! Название альянса придет сюда как только заполнится группа и мы всех проверим. За ходом записи вы можете следить в чате закупки. Ваше кодовое имя: <b>${res.anonName}</b>:( Если по каким-либо причинам вы хотите удалиться из записи, то напишите в личные сообщения @crygerm`,
+        {
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: buttons,
+          },
         },
-      },
-    );
+      )
+      .then(async (res: Message) => {
+        await this.updateLastMessageAndEditOldMessage(userId, res.message_id);
+      })
+      .catch((er) => {
+        console.log(er);
+      });
     const message = [
       `Регистрация: <code>${res.name}</code> ${res.kruger ? 'Kruger' : 'Сам'}`,
       '',
@@ -252,6 +381,62 @@ export class BotService {
     //   },
     // );
     await this.sendFileByFileId(res.screenNoPromo, message);
+    await this.sendOrUpdateMessage(res.groupId, res.messageIdInTelegramGroup);
+  }
+
+  async confirmationPresent(userId: number) {
+    const res: DataNewReg | null =
+      await this.groupService.confirmUserInGroupNoKruger(userId);
+    console.log(res, 'тут');
+    await this.userService.cleaeRegData(userId);
+    if (!res) {
+      return;
+    }
+    const buttons = [
+      [
+        {
+          text: 'В чат закупок',
+          url: this.config.get<string>('CHAT_ZAKUPOK')!,
+        },
+      ],
+      [{ text: 'В начало', callback_data: 'mainMenu' }],
+    ];
+    await this.bot.telegram
+      .sendMessage(
+        userId,
+        `Поздравляю! Вы записались в группу! Название альянса придет сюда как только заполнится группа и мы всех проверим. За ходом записи вы можете следить в чате закупки. Ваше кодовое имя: <b>${res.anonName}</b>:( Если по каким-либо причинам вы хотите удалиться из записи, то напишите в личные сообщения @crygerm`,
+        {
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: buttons,
+          },
+        },
+      )
+      .then(async (res: Message) => {
+        await this.updateLastMessageAndEditOldMessage(userId, res.message_id);
+      })
+      .catch((er) => {
+        console.log(er);
+      });
+    const message = [
+      `Регистрация: <code>${res.name}</code> Подарок`,
+      '',
+      `😊 @${res.username}`,
+      `🪪 <code>${res.promo}</code>`,
+      `🥸 <code>${res.anonName}</code>`,
+      `🎮 <code>${res.gameName}</code>`,
+    ].join('\n');
+    await this.bot.telegram
+      .sendMessage(this.config.get<number>('GROUP_TELEGRAM_CLOSE')!, message, {
+        parse_mode: 'HTML',
+      })
+      .then((res: Message) => {
+        console.log(res.message_id);
+      })
+      .catch((er) => {
+        console.log(er);
+      });
+    // await this.sendFileByFileId(res.screenNoPromo, message);
     await this.sendOrUpdateMessage(res.groupId, res.messageIdInTelegramGroup);
   }
 
@@ -290,41 +475,88 @@ export class BotService {
 
   async askPassword(userId: number) {
     const buttons = [];
-    await this.bot.telegram.sendMessage(
-      userId,
-      `Теперь напишите пароль от почты что вы ввели`,
-      {
+    await this.bot.telegram
+      .sendMessage(userId, `Теперь напишите пароль от почты что вы ввели`, {
         reply_markup: {
           inline_keyboard: buttons,
         },
-      },
-    );
+      })
+      .then(async (res: Message) => {
+        await this.updateLastMessageAndEditOldMessage(userId, res.message_id);
+      })
+      .catch((er) => {
+        console.log(er);
+      });
   }
 
   async askEmail(userId: number) {
     const buttons = [];
-    await this.bot.telegram.sendMessage(
-      userId,
-      `Теперь напишите почту вашего аккаунта`,
-      {
+    await this.bot.telegram
+      .sendMessage(userId, `Теперь напишите почту вашего аккаунта`, {
         reply_markup: {
           inline_keyboard: buttons,
         },
-      },
-    );
+      })
+      .then(async (res: Message) => {
+        await this.updateLastMessageAndEditOldMessage(userId, res.message_id);
+      })
+      .catch((er) => {
+        console.log(er);
+      });
   }
 
   async askGameName(userId: number) {
     const buttons = [];
-    await this.bot.telegram.sendMessage(
-      userId,
-      `Супер! Пора заполнить ваши данные. Напишите ваше имя в игре`,
-      {
-        reply_markup: {
-          inline_keyboard: buttons,
+    await this.bot.telegram
+      .sendMessage(
+        userId,
+        `Супер! Пора заполнить ваши данные. Напишите ваше имя в игре`,
+        {
+          reply_markup: {
+            inline_keyboard: buttons,
+          },
         },
-      },
-    );
+      )
+      .then(async (res: Message) => {
+        await this.updateLastMessageAndEditOldMessage(userId, res.message_id);
+      })
+      .catch((er) => {
+        console.log(er);
+      });
+  }
+
+  async soldOutMessagePresent(userId: number) {
+    const buttons = [
+      [
+        {
+          text: 'Записаться в другую группу',
+          callback_data: 'takePlacePresent',
+        },
+      ],
+      [{ text: 'В начало', callback_data: 'mainMenu' }],
+      [
+        {
+          text: 'В чат закупок',
+          url: this.config.get<string>('CHAT_ZAKUPOK')!,
+        },
+      ],
+    ];
+    await this.bot.telegram
+      .sendMessage(
+        userId,
+        `К сожалению, все места уже заняты :( Запишитесь в другую группу или подождите пока мы создадим новую. Актуальную информацию о времени создания новой группы или ходе записи вы можете узнать нажав на кнопку "Чат закупок"`,
+        {
+          reply_markup: {
+            inline_keyboard: buttons,
+          },
+        },
+      )
+      .then(async (res: Message) => {
+        await this.updateLastMessageAndEditOldMessage(userId, res.message_id);
+      })
+      .catch((er) => {
+        console.log(er);
+      });
   }
 
   async soldOutMessage(userId: number) {
@@ -332,28 +564,61 @@ export class BotService {
       [{ text: 'Записаться в другую группу', callback_data: 'takePlace' }],
       [{ text: 'В начало', callback_data: 'mainMenu' }],
     ];
-    await this.bot.telegram.sendMessage(
-      userId,
-      `К сожалению, все места уже заняты :( Запишитесь в другую группу или подождите пока мы создадим новую. Актуальную информацию о времени создания новой группы или ходе записи вы можете узнать нажав на кнопку "Чат закупок"`,
-      {
-        reply_markup: {
-          inline_keyboard: buttons,
+    await this.bot.telegram
+      .sendMessage(
+        userId,
+        `К сожалению, все места уже заняты :( Запишитесь в другую группу или подождите пока мы создадим новую. Актуальную информацию о времени создания новой группы или ходе записи вы можете узнать нажав на кнопку "Чат закупок"`,
+        {
+          reply_markup: {
+            inline_keyboard: buttons,
+          },
         },
-      },
-    );
+      )
+      .then(async (res: Message) => {
+        await this.updateLastMessageAndEditOldMessage(userId, res.message_id);
+      })
+      .catch((er) => {
+        console.log(er);
+      });
   }
 
   async extraService(userId: number) {
     const buttons = [[{ text: 'В начало', callback_data: 'mainMenu' }]];
-    await this.bot.telegram.sendMessage(
-      userId,
-      `Кроме доната в игры я могу помочь с оплатой подписок ... текст будет изменен`,
-      {
+    await this.bot.telegram
+      .sendMessage(
+        userId,
+        `Кроме доната в игры я могу помочь с оплатой подписок ... текст будет изменен`,
+        {
+          reply_markup: {
+            inline_keyboard: buttons,
+          },
+        },
+      )
+      .then(async (res: Message) => {
+        await this.updateLastMessageAndEditOldMessage(userId, res.message_id);
+      })
+      .catch((er) => {
+        console.log(er);
+      });
+  }
+
+  async faqPresent(userId: number) {
+    const buttons = [
+      [{ text: 'Понятно, записываюсь!', callback_data: 'takePlacePresent' }],
+      [{ text: 'В начало', callback_data: 'mainMenu' }],
+    ];
+    await this.bot.telegram
+      .sendMessage(userId, `Вот как тут всё устроено: текст будет изменен...`, {
         reply_markup: {
           inline_keyboard: buttons,
         },
-      },
-    );
+      })
+      .then(async (res: Message) => {
+        await this.updateLastMessageAndEditOldMessage(userId, res.message_id);
+      })
+      .catch((er) => {
+        console.log(er);
+      });
   }
 
   async faq(userId: number) {
@@ -361,15 +626,18 @@ export class BotService {
       [{ text: 'Понятно, записываюсь!', callback_data: 'takePlace' }],
       [{ text: 'В начало', callback_data: 'mainMenu' }],
     ];
-    await this.bot.telegram.sendMessage(
-      userId,
-      `Вот как тут всё устроено: текст будет изменен...`,
-      {
+    await this.bot.telegram
+      .sendMessage(userId, `Вот как тут всё устроено: текст будет изменен...`, {
         reply_markup: {
           inline_keyboard: buttons,
         },
-      },
-    );
+      })
+      .then(async (res: Message) => {
+        await this.updateLastMessageAndEditOldMessage(userId, res.message_id);
+      })
+      .catch((er) => {
+        console.log(er);
+      });
   }
 
   async getListUsersOfGroup(groupId: string): Promise<string> {
@@ -421,19 +689,31 @@ export class BotService {
       return;
     }
     const buttons = [
-      [{ text: 'Чат закупок', callback_data: '!!!!!!!!!!' }],
+      [
+        {
+          text: 'В чат закупок',
+          url: this.config.get<string>('CHAT_ZAKUPOK')!,
+        },
+      ],
       [{ text: 'В начало', callback_data: 'mainMenu' }],
     ];
-    await this.bot.telegram.sendMessage(
-      userId,
-      `Поздравляю! Вы записались в группу! Реквизиты для оплаты и название альянса придет сюда как только заполнится группа. За ходом записи вы можете следить в чате закупки. Ваше кодовое имя <b>${res.anonName}</b>`,
-      {
-        parse_mode: 'HTML',
-        reply_markup: {
-          inline_keyboard: buttons,
+    await this.bot.telegram
+      .sendMessage(
+        userId,
+        `Поздравляю! Вы записались в группу! Реквизиты для оплаты и название альянса придет сюда как только заполнится группа. За ходом записи вы можете следить в чате закупки. Ваше кодовое имя <b>${res.anonName}</b>`,
+        {
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: buttons,
+          },
         },
-      },
-    );
+      )
+      .then(async (res: Message) => {
+        await this.updateLastMessageAndEditOldMessage(userId, res.message_id);
+      })
+      .catch((er) => {
+        console.log(er);
+      });
     const message = [
       `Регистрация: <code>${res.name}</code> ${res.kruger ? 'Kruger' : 'Сам'}`,
       '',
@@ -528,13 +808,13 @@ export class BotService {
       return [
         {
           text: `${gr.promo} (${displayedCount}/${total})${suffix}`,
-          callback_data: 'reservPlaceInGroup:' + gr._id,
+          callback_data: 'reservPlaceInPresentGroup:' + gr._id,
         },
       ];
     });
     const pickTextForEmptyPresents = () => {
       if (allGroups.length) {
-        buttons.push([{ text: 'За что подарки', callback_data: 'wtfPresent' }]);
+        buttons.push([{ text: 'За что подарки', callback_data: 'faqPresent' }]);
         buttons.push([
           { text: 'Обновить', callback_data: 'takePlacePresent' },
           { text: 'В начало', callback_data: 'mainMenu' },
@@ -547,11 +827,18 @@ export class BotService {
       ]);
       return `ТО- К сожалению, группа пока не создана или находится в разработке :( За дополнительной информацией обращайтесь к @crygerm`;
     };
-    await this.bot.telegram.sendMessage(userId, pickTextForEmptyPresents(), {
-      reply_markup: {
-        inline_keyboard: buttons,
-      },
-    });
+    await this.bot.telegram
+      .sendMessage(userId, pickTextForEmptyPresents(), {
+        reply_markup: {
+          inline_keyboard: buttons,
+        },
+      })
+      .then(async (res: Message) => {
+        await this.updateLastMessageAndEditOldMessage(userId, res.message_id);
+      })
+      .catch((er) => {
+        console.log(er);
+      });
   }
 
   async getGroupsButtonsList(userId: number) {
@@ -597,51 +884,72 @@ export class BotService {
       { text: 'В начало', callback_data: 'mainMenu' },
     ]);
     // buttons.push([{ text: 'В начало', callback_data: 'mainMenu' }]);
-    await this.bot.telegram.sendMessage(
-      userId,
-      `Отлично в какую группу вас записать? Продолжая запись вы соглашаетесь на обработку ваших персональныхданных. Если вы не согласны то нажмите кнопку "В начало".`,
-      {
-        reply_markup: {
-          inline_keyboard: buttons,
+    await this.bot.telegram
+      .sendMessage(
+        userId,
+        `Отлично в какую группу вас записать? Продолжая запись вы соглашаетесь на обработку ваших персональныхданных. Если вы не согласны то нажмите кнопку "В начало".`,
+        {
+          reply_markup: {
+            inline_keyboard: buttons,
+          },
         },
-      },
-    );
+      )
+      .then(async (res: Message) => {
+        await this.updateLastMessageAndEditOldMessage(userId, res.message_id);
+      })
+      .catch((er) => {
+        console.log(er);
+      });
   }
 
   async startMessage(userId: number) {
-    await this.bot.telegram.sendMessage(
-      userId,
-      'Всем привет, это Крюгер-бот!😎 Здесь вы можете записаться на закупку акций альянса!🤝',
-      {
-        reply_markup: {
-          inline_keyboard: [
-            [
-              {
-                text: 'Записаться на акцию альянса',
-                callback_data: 'takePlace',
-              },
+    await this.bot.telegram
+      .sendMessage(
+        userId,
+        'Всем привет, это Крюгер-бот!😎 Здесь вы можете записаться на закупку акций альянса!🤝',
+        {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: 'Записаться на акцию альянса',
+                  callback_data: 'takePlace',
+                },
+              ],
+              [{ text: 'Инструкция по закупке', callback_data: 'faq' }],
+              [
+                {
+                  text: 'Подарки от Крюгера',
+                  callback_data: 'takePlacePresent',
+                },
+              ],
+              [
+                {
+                  text: 'Дополнительные услуги',
+                  callback_data: 'extraService',
+                },
+              ],
             ],
-            [{ text: 'Инструкция по закупке', callback_data: 'faq' }],
-            [
-              {
-                text: 'Подарки от Крюгера',
-                callback_data: 'takePlacePresent',
-              },
-            ],
-            [
-              {
-                text: 'дополнительные услуги',
-                callback_data: 'extraService',
-              },
-            ],
-          ],
+          },
         },
-      },
-    );
+      )
+      .then(async (res: Message) => {
+        await this.updateLastMessageAndEditOldMessage(userId, res.message_id);
+      })
+      .catch((er) => {
+        console.log(er);
+      });
   }
 
   async sendTextMessage(userId: number, text: string) {
-    await this.bot.telegram.sendMessage(userId, text, { parse_mode: 'HTML' });
+    await this.bot.telegram
+      .sendMessage(userId, text, { parse_mode: 'HTML' })
+      .then(async (res: Message) => {
+        await this.updateLastMessageAndEditOldMessage(userId, res.message_id);
+      })
+      .catch((er) => {
+        console.log(er);
+      });
   }
 
   async sendOneTimeInvite(userId: number) {
@@ -653,10 +961,17 @@ export class BotService {
       expire_date: expireDate,
       name: `Invite for user ${userId}`,
     });
-    await this.bot.telegram.sendMessage(
-      userId,
-      `Ваша персональная ссылка для вступления в канал (действует следующее количество часов: ${time}):\n${inviteLink.invite_link}`,
-    );
+    await this.bot.telegram
+      .sendMessage(
+        userId,
+        `Ваша персональная ссылка для вступления в канал (действует следующее количество часов: ${time}):\n${inviteLink.invite_link}`,
+      )
+      .then(async (res: Message) => {
+        await this.updateLastMessageAndEditOldMessage(userId, res.message_id);
+      })
+      .catch((er) => {
+        console.log(er);
+      });
   }
 
   async alertUserHaveAccess(userId: string) {

@@ -19,6 +19,8 @@ import { Context, NarrowedContext } from 'telegraf';
 import { UseGuards } from '@nestjs/common';
 import { AdminGuardAccess } from './botGuardAndMiddleware/access-control.guard';
 import { AppGateway } from 'src/app/app.gateway';
+import { LastMessageMatchGuard } from './botGuardAndMiddleware/lastMessageMatchGuard.guard';
+import { GroupService } from 'src/group/group.service';
 // import { GroupService } from 'src/group/group.service';
 
 export type UserTelegrafContext = NarrowedContext<
@@ -33,40 +35,8 @@ export class TelegramGateway {
     private botService: BotService,
     private appService: AppService,
     private userService: UserService,
-    // private groupService: GroupService,
+    private groupService: GroupService,
   ) {}
-
-  // @Hears(/^deletegroup(?:\s+(.*))?$/i)
-  // @UseGuards(AdminGuardAccess)
-  // async deletegroup(@Ctx() ctx: UserTelegrafContext) {
-  //   console.log('@Hears deletegroup', ctx.from.id);
-  //   const message = ctx.message as Message.TextMessage;
-
-  //   const match = message.text.match(/^deletegroup(?:\s+(.*))?$/i);
-  //   const rawName = match?.[1]?.trim();
-
-  //   const groupName =
-  //     rawName && rawName.length > 0 ? rawName : `New Group ${Date.now()}`;
-
-  //   await this.groupService.deleteGroup(groupName);
-  //   await ctx.reply(`✅ Группа "${groupName}" успешно удалена.`);
-  // }
-
-  // @Hears(/^addgroup(?:\s+(.*))?$/i)
-  // @UseGuards(AdminGuardAccess)
-  // async addgroup(@Ctx() ctx: UserTelegrafContext) {
-  //   console.log('@Hears addgroup', ctx.from.id);
-  //   const message = ctx.message as Message.TextMessage;
-
-  //   const match = message.text.match(/^addgroup(?:\s+(.*))?$/i);
-  //   const rawName = match?.[1]?.trim();
-
-  //   const groupName =
-  //     rawName && rawName.length > 0 ? rawName : `New Group ${Date.now()}`;
-
-  //   await this.groupService.createGroup(groupName);
-  //   await ctx.reply(`✅ Группа "${groupName}" успешно создана.`);
-  // }
 
   setAppGateway(appGateway: AppGateway) {
     this.appGateway = appGateway;
@@ -84,6 +54,16 @@ export class TelegramGateway {
     }
   }
 
+  @Action('closeAccess')
+  @UseGuards(AdminGuardAccess)
+  async closeAccess(@Ctx() ctx: Context) {
+    console.log('Access close');
+    if (ctx.from) {
+      await this.botService.sendTextMessage(ctx.from.id, 'Доступ закрыт');
+    }
+  }
+
+  @UseGuards(LastMessageMatchGuard)
   @Action('reg_gameName')
   async secondStepInSide(@Ctx() ctx: UserTelegrafContext) {
     console.log('@Action secondStepInSide');
@@ -96,6 +76,7 @@ export class TelegramGateway {
     await ctx.answerCbQuery();
   }
 
+  @UseGuards(LastMessageMatchGuard)
   @Action(/^buyByMeStartReg:(.+)$/)
   async buyByMeStartReg(@Ctx() ctx: Context) {
     if (ctx.from) {
@@ -110,6 +91,7 @@ export class TelegramGateway {
     }
   }
 
+  @UseGuards(LastMessageMatchGuard)
   @Action(/^buyByMe:(.+)$/)
   async buyByMe(@Ctx() ctx: Context) {
     console.log('@Action buyByMe');
@@ -125,6 +107,7 @@ export class TelegramGateway {
     }
   }
 
+  @UseGuards(LastMessageMatchGuard)
   @Action('takePlacePresent')
   async takePlacePresent(@Ctx() ctx: UserTelegrafContext) {
     console.log('@Action takePlacePresent');
@@ -133,6 +116,7 @@ export class TelegramGateway {
     await ctx.answerCbQuery();
   }
 
+  @UseGuards(LastMessageMatchGuard)
   @Action('takePlace')
   async takePlace(@Ctx() ctx: UserTelegrafContext) {
     console.log('@Action takePlace');
@@ -141,6 +125,25 @@ export class TelegramGateway {
     await ctx.answerCbQuery();
   }
 
+  @UseGuards(LastMessageMatchGuard)
+  @Action(/^reservPlaceInPresentGroup:(.+)$/)
+  async takePlaceInPresentGroup(@Ctx() ctx: Context) {
+    console.log('@Action reservPlaceInGroup');
+    if (ctx.from) {
+      const callbackQuery = ctx.callbackQuery as CallbackQuery.DataQuery;
+      const match = callbackQuery.data.match(
+        /^reservPlaceInPresentGroup:(.+)$/,
+      );
+      if (!match) {
+        await ctx.answerCbQuery('Некорректная кнопка', { show_alert: true });
+        return;
+      }
+      await this.botService.startRegistrationPresent(ctx.from?.id, match[1]);
+      await ctx.answerCbQuery();
+    }
+  }
+
+  @UseGuards(LastMessageMatchGuard)
   @Action(/^reservPlaceInGroup:(.+)$/)
   async takePlaceInGroup(@Ctx() ctx: Context) {
     console.log('@Action reservPlaceInGroup');
@@ -156,6 +159,7 @@ export class TelegramGateway {
     }
   }
 
+  @UseGuards(LastMessageMatchGuard)
   @Action('extraService')
   async extraService(@Ctx() ctx: UserTelegrafContext) {
     console.log('@Action extraService');
@@ -163,6 +167,15 @@ export class TelegramGateway {
     await ctx.answerCbQuery();
   }
 
+  @UseGuards(LastMessageMatchGuard)
+  @Action('faqPresent')
+  async faqPresent(@Ctx() ctx: UserTelegrafContext) {
+    console.log('@Action faqPresent');
+    await this.botService.faqPresent(ctx.from.id);
+    await ctx.answerCbQuery();
+  }
+
+  @UseGuards(LastMessageMatchGuard)
   @Action('faq')
   async faq(@Ctx() ctx: UserTelegrafContext) {
     console.log('@Action faq');
@@ -170,6 +183,7 @@ export class TelegramGateway {
     await ctx.answerCbQuery();
   }
 
+  @UseGuards(LastMessageMatchGuard)
   @Action('mainMenu')
   async mainMenu(@Ctx() ctx: UserTelegrafContext) {
     console.log('@Action mainMenu');
@@ -177,6 +191,7 @@ export class TelegramGateway {
     await ctx.answerCbQuery();
   }
 
+  @UseGuards(LastMessageMatchGuard)
   @Action('succssesRegistrtion')
   async succssesRegistrtion(@Ctx() ctx: UserTelegrafContext) {
     console.log('@Action succssesRegistrtion');
@@ -197,6 +212,22 @@ export class TelegramGateway {
   async addRegDataNoKruger(@Ctx() ctx: UserTelegrafContext) {
     const user = await this.userService.getUser(ctx.from.id);
     const message = ctx.message as Message.PhotoMessage;
+    if ('photo' in message && this.userService.admins.includes(ctx.from.id)) {
+      const photos = message.photo;
+      const highestQualityPhoto = photos[photos.length - 1];
+      const fileId = highestQualityPhoto.file_id;
+      if (message.caption) {
+        const groups = await this.groupService.getGroups();
+        if (groups) {
+          const res = groups.find((gr) => gr.name === message.caption);
+          if (res) {
+            await this.groupService.updateGroupImage(res._id, fileId);
+            await ctx.reply('Готово');
+            return;
+          }
+        }
+      }
+    }
     if ('photo' in message && user && user.next_step_data && user.reg_groupId) {
       const photos = message.photo;
       const highestQualityPhoto = photos[photos.length - 1];
@@ -262,6 +293,15 @@ export class TelegramGateway {
     const user = await this.userService.getUser(ctx.from.id);
     const message = ctx.message as Message.TextMessage;
     if (user && user.next_step_data && user.reg_groupId) {
+      if (user.next_step_data === 'reg_gameNamePresent') {
+        await this.userService.addRegData(
+          ctx.from.id,
+          'reg_gameName',
+          message.text.slice(0, 100),
+        );
+        await this.botService.confirmationPresent(ctx.from.id);
+        return;
+      }
       if (user.next_step_data === 'reg_email') {
         const email = message.text;
 
@@ -301,14 +341,5 @@ export class TelegramGateway {
       }
     }
     console.log(await this.userService.getUser(ctx.from.id));
-  }
-
-  @Action('closeAccess')
-  @UseGuards(AdminGuardAccess)
-  async closeAccess(@Ctx() ctx: Context) {
-    console.log('Access close');
-    if (ctx.from) {
-      await this.botService.sendTextMessage(ctx.from.id, 'Доступ закрыт');
-    }
   }
 }

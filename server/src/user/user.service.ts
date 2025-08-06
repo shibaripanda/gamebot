@@ -15,6 +15,16 @@ export class UserService {
     await this.userMongo.updateOne({ id: userId }, { [field]: data });
   }
 
+  async updateLastMessage(userId: number, messageId: number) {
+    const res = await this.userMongo.findOneAndUpdate(
+      { id: userId },
+      { lastMessage: messageId },
+    );
+    if (res) {
+      return res.lastMessage;
+    }
+  }
+
   async cleaeRegData(userId: number) {
     return await this.userMongo.findOneAndUpdate(
       { id: userId },
@@ -63,7 +73,9 @@ export class UserService {
     console.log(`User ${userId} marked as blacklisted`, res);
   }
 
-  async createUserOrUpdateUser(user: Omit<User, 'gameName' | 'blackList'>) {
+  async createUserOrUpdateUser(
+    user: Omit<User, 'gameName' | 'blackList' | 'lastMessage'>,
+  ) {
     const userRes = await this.userMongo.updateOne({ id: user.id }, user, {
       upsert: true,
     });

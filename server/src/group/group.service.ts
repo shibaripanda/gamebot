@@ -85,7 +85,6 @@ export class GroupService {
 
     const updatedGroup = await this.groupMongo.findById(user.reg_groupId);
     const updatedUser = updatedGroup?.users?.[targetIndex];
-    console.log(updatedUser, 'ssssssssssssss');
 
     if (!updatedUser) return null;
 
@@ -391,6 +390,13 @@ export class GroupService {
     return await this.groupMongo.findOneAndUpdate({ _id: groupId }, data, {
       new: true,
     });
+  }
+
+  async updateGroupImage(groupId: string, image: string) {
+    return await this.groupMongo.findOneAndUpdate(
+      { _id: groupId },
+      { image: image },
+    );
   }
 
   async deleteGroup(groupId: string) {

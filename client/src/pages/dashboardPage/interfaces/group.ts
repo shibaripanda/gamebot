@@ -14,4 +14,5 @@ export interface Group {
   telegramGroup?: number;
   messageIdInTelegramGroup?: number;
   maxCountUsersInGroupForKruger: number;
+  image: string;
 }

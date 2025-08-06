@@ -57,6 +57,11 @@ export const UserSchema = new mongoose.Schema(
       require: true,
       default: '',
     },
+    lastMessage: {
+      type: Number,
+      require: true,
+      default: 0,
+    },
   },
   { timestamps: true },
 );
@@ -73,6 +78,7 @@ export interface User {
   reg_groupId?: string;
   reg_screenNoPromo?: string;
   next_step_data?: string;
+  lastMessage: number;
 }
 
 export type UserDocument = User & mongoose.Document;
