@@ -18,7 +18,7 @@ interface UserProps {
   updateGroupSettings: any;
   deleteGroup: any;
 }
-export type Actions = 'Delete' | 'Confirm' | 'Unconfirm' | 'Aliance' | false
+export type Actions = 'Delete' | 'Confirm' | 'Unconfirm' | 'Aliance' | 'Rekviziti' | false
 
 export function GroupTable({users, editRegUsers, groupId, paymentsMetods, group, updateGroupSettings, deleteGroup }: UserProps) {
   const [selection, setSelection] = useState<string[]>([]);
@@ -74,7 +74,7 @@ export function GroupTable({users, editRegUsers, groupId, paymentsMetods, group,
           variant='default'
           onClick={settingsmModalUse.open}
           >
-            Settings
+          Настройки
           </Button>
           <MantineGroup justify="flex-end">
             <Text>
@@ -88,8 +88,24 @@ export function GroupTable({users, editRegUsers, groupId, paymentsMetods, group,
               topConfirmModal.open()
             }}
             >
-              Delete
-            </Button>
+            Удалить</Button>
+            <Button
+            disabled={users.length !== group.maxCountUsersInGroup}
+            onClick={() => {
+              setSelection([...users.map(user => user._id)]);
+              setAction('Aliance')
+              topConfirmModal.open()
+            }}
+            >Альянс</Button>
+            <Button
+            disabled={users.length === group.maxCountUsersInGroup}
+            onClick={() => {
+              setSelection([...users.filter(user => user.byByKruger === true).map(user => user._id)]);
+              setAction('Rekviziti')
+              topConfirmModal.open()
+            }}
+            >
+            Реквизиты</Button>   
             <Button 
             color='green'
             disabled={!selection.length}
@@ -98,8 +114,7 @@ export function GroupTable({users, editRegUsers, groupId, paymentsMetods, group,
               topConfirmModal.open()
             }}
             >
-              Confirm
-            </Button>  
+            Оплата</Button>  
             <Button
             disabled={!selection.length}
             onClick={() => {
@@ -107,18 +122,7 @@ export function GroupTable({users, editRegUsers, groupId, paymentsMetods, group,
               topConfirmModal.open()
             }}
             >
-              Unconfirm
-            </Button>
-            <Button
-            disabled={users.filter(user => user && user.confirmation).length !== group.maxCountUsersInGroup}
-            onClick={() => {
-              setSelection([...users.filter(user => user.byByKruger === true).map(user => user._id)]);
-              setAction('Aliance')
-              topConfirmModal.open()
-            }}
-            >
-              Aliance
-            </Button>   
+            Отмена оплаты</Button>
           </MantineGroup>
         </MantineGroup>
         <Space h='xl'/>
