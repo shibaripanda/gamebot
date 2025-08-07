@@ -92,7 +92,7 @@ export function GroupTable({users, editRegUsers, groupId, paymentsMetods, group,
             >
             Удалить</Button>
             <Button
-            // disabled={users.length !== group.maxCountUsersInGroup}
+            disabled={users.length === users.filter((us) => us.recivedAlianceName).length}
             onClick={() => {
               setSelection([...users.map(user => user._id)]);
               setAction('Aliance')
@@ -100,7 +100,10 @@ export function GroupTable({users, editRegUsers, groupId, paymentsMetods, group,
             }}
             >Альянс</Button>
             <Button
-            disabled={!users.map(us => us.recivedAlianceName).includes(true)}
+            disabled={
+              !users.map(us => us.recivedAlianceName).includes(true) || 
+              users.filter(us => us.recivedRekviziti === true).length === users.filter(us => us.byByKruger === true).length
+            }
             onClick={() => {
               setSelection([...users.filter(user => user.byByKruger === true).map(user => user._id)]);
               setAction('Rekviziti')
@@ -124,7 +127,7 @@ export function GroupTable({users, editRegUsers, groupId, paymentsMetods, group,
               topConfirmModal.open()
             }}
             >
-            Отмена оплаты</Button>
+            Отмена</Button>
           </MantineGroup>
         </MantineGroup>
         <Space h='xl'/>

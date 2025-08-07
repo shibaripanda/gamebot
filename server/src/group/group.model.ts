@@ -111,6 +111,11 @@ export const GroupSchema = new mongoose.Schema(
       require: true,
       default: '',
     },
+    finish: {
+      type: Boolean,
+      require: true,
+      default: false,
+    },
   },
   { timestamps: true },
 );
@@ -145,6 +150,7 @@ export interface Group {
   messageIdInTelegramGroup?: number;
   maxCountUsersInGroupForKruger: number;
   image: string;
+  finish: boolean;
 }
 
 export type GroupDocument = Group & mongoose.Document;

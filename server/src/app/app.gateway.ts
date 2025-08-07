@@ -87,6 +87,9 @@ export class AppGateway
           payload.groupId,
           payload.idRegUsersForDeleteOrEdit,
         );
+        if (res.users.every((u) => u?.confirmation === true)) {
+          res = await this.botService.finishGroupRegistration(res);
+        }
       }
     } else if (payload.action === 'Unconfirm') {
       res = await this.groupService.unConfirmUsersInGroup(
@@ -95,6 +98,9 @@ export class AppGateway
       );
     } else if (payload.action === 'Aliance') {
       res = await this.botService.sendAlianceNameToGroupUsers(payload.groupId);
+      return { success: true, message: 'Подтверждено', group: res };
+    } else if (payload.action === 'Rekviziti') {
+      res = await this.botService.sendRekvizitiToGroupUsers(payload.groupId);
       return { success: true, message: 'Подтверждено', group: res };
     }
     if (res) {

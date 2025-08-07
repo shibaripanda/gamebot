@@ -77,21 +77,6 @@ export class TelegramGateway {
   }
 
   @UseGuards(LastMessageMatchGuard)
-  @Action(/^buyByMeStartReg:(.+)$/)
-  async buyByMeStartReg(@Ctx() ctx: Context) {
-    if (ctx.from) {
-      const callbackQuery = ctx.callbackQuery as CallbackQuery.DataQuery;
-      const match = callbackQuery.data.match(/^buyByMeStartReg:(.+)$/);
-      if (!match) {
-        await ctx.answerCbQuery('Некорректная кнопка', { show_alert: true });
-        return;
-      }
-      await this.botService.startRegistrationByMe(ctx.from.id, match[1]);
-      await ctx.answerCbQuery();
-    }
-  }
-
-  @UseGuards(LastMessageMatchGuard)
   @Action(/^buyByMe:(.+)$/)
   async buyByMe(@Ctx() ctx: Context) {
     console.log('@Action buyByMe');
@@ -103,6 +88,21 @@ export class TelegramGateway {
         return;
       }
       await this.botService.buyByMe(ctx.from.id, match[1]);
+      await ctx.answerCbQuery();
+    }
+  }
+
+  @UseGuards(LastMessageMatchGuard)
+  @Action(/^buyByMeStartReg:(.+)$/)
+  async buyByMeStartReg(@Ctx() ctx: Context) {
+    if (ctx.from) {
+      const callbackQuery = ctx.callbackQuery as CallbackQuery.DataQuery;
+      const match = callbackQuery.data.match(/^buyByMeStartReg:(.+)$/);
+      if (!match) {
+        await ctx.answerCbQuery('Некорректная кнопка', { show_alert: true });
+        return;
+      }
+      await this.botService.startRegistrationByMe(ctx.from.id, match[1]);
       await ctx.answerCbQuery();
     }
   }

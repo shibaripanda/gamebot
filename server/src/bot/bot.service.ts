@@ -19,6 +19,90 @@ export class BotService {
     private appService: AppService,
   ) {}
 
+  async finishGroupRegistration(group: Group) {
+    await this.bot.telegram
+      .sendMessage(
+        this.config.get<number>('GROUP_TELEGRAM_OPEN')!,
+        `🚀 <b>${group.name}</b>\n🚀 Группа закупилась, всем спасибо!`,
+        { parse_mode: 'HTML' },
+      )
+      .catch((e) => {
+        console.log(e);
+      });
+    for (const user of group.users) {
+      if (user) {
+        await this.bot.telegram
+          .sendMessage(
+            user.telegramId,
+            `🚀 <b>${group.name}</b>\n🚀 Группа закупилась!\n${user.anonName} ${user.gameName}`,
+            { parse_mode: 'HTML' },
+          )
+          .catch((e) => {
+            console.log(e);
+          });
+      }
+    }
+    return await this.groupService.closeGroup(group._id);
+  }
+
+  async sendRekvizitiToGroupUsers(groupId: string): Promise<Group | false> {
+    const group = await this.groupService.getGroup(groupId);
+    if (!group) {
+      console.error('Group not found');
+      return false;
+    }
+    const rekviz = await this.appService.getPaymentMetods();
+    console.log(rekviz);
+    if (!rekviz || !rekviz.length) {
+      console.error('Rekviz not found');
+      return false;
+    }
+
+    let wasUpdated = false;
+
+    for (const user of group.users.filter((us) => us?.byByKruger === true)) {
+      if (!user || !user.telegramId || user.recivedRekviziti) {
+        console.log('Ошибка отправки Реквизитов или уже получено');
+        continue;
+      }
+      const rendom = this.groupService.getRandomArrayElement(rekviz);
+
+      try {
+        await this.bot.telegram
+          .sendMessage(
+            user.telegramId,
+            `<b>${user.gameName} (${user.anonName}) ${group.aliance}</b>\nРеквизиты:\n${rendom.paymentData} `,
+            { parse_mode: 'HTML' },
+          )
+          .then((res: Message) => {
+            user.recivedRekviziti = true;
+            wasUpdated = true;
+            console.log(res.message_id);
+            // await this.updateLastMessageAndEditOldMessage(
+            //   user.telegramId,
+            //   res.message_id,
+            // );
+          })
+          .catch((er) => {
+            console.log(er);
+          });
+      } catch (err) {
+        console.error(
+          `Ошибка при отправке сообщения юзеру ${user.telegramId}`,
+          err,
+        );
+      }
+    }
+
+    if (wasUpdated) {
+      await group.save(); // Сохраняем обновлённые флаги пользователей
+    }
+
+    // await this.managerMessage(group);
+
+    return group;
+  }
+
   async sendAlianceNameToGroupUsers(groupId: string): Promise<Group | false> {
     const group = await this.groupService.getGroup(groupId);
     if (!group) {
@@ -29,7 +113,7 @@ export class BotService {
     let wasUpdated = false;
 
     for (const user of group.users) {
-      if (!user || !user.telegramId || user.recivedAlianceName) {
+      if (!user || !user.telegramId) {
         console.log('Ошибка отправки Альянса или уже получено');
         continue;
       }
@@ -72,36 +156,38 @@ export class BotService {
 
   async managerMessage(group: Group) {
     let text = `${group.name} | ${group.promo} | ${group.aliance} | ${group.present ? '🎁' : ''}`;
-    for (const res of group.users) {
-      if (res) {
-        const message = [
-          `${group.users.indexOf(res) + 1}. ${res.byByKruger ? 'Kruger' : 'Сам'}`,
-          `🥸 ${res.anonName}`,
-          `🎮 ${res.gameName}`,
-          res.email && `📧 ${res.email}`,
-          res.password && `🔒 ${res.password}`,
-        ]
-          .filter(Boolean) // удаляет undefined/false/null/'' элементы
-          .join('\n');
-        text = text + '\n-\n' + message;
-      }
-    }
     // for (const res of group.users) {
     //   if (res) {
     //     const message = [
     //       `${group.users.indexOf(res) + 1}. ${res.byByKruger ? 'Kruger' : 'Сам'}`,
-    //       `🥸 <code>${res.anonName}</code>`,
-    //       `🎮 <code>${res.gameName}</code>`,
-    //       `📧 <code>${res.email}</code>`,
-    //       `🔒 <code>${res.password}</code>`,
-    //     ].join('\n');
-    //     text = text + '\n-----\n' + message;
+    //       `🥸 ${res.anonName}`,
+    //       `🎮 ${res.gameName}`,
+    //       res.email && `📧 ${res.email}`,
+    //       res.password && `🔒 ${res.password}`,
+    //     ]
+    //       .filter(Boolean) // удаляет undefined/false/null/'' элементы
+    //       .join('\n');
+    //     text = text + '\n-\n' + message;
     //   }
     // }
+    for (const res of group.users) {
+      if (res) {
+        const message = [
+          `${group.users.indexOf(res) + 1}. ${res.byByKruger ? 'Kruger' : 'Сам'}`,
+          `🥸 <code>${res.anonName}</code>`,
+          `🎮 <code>${res.gameName}</code>`,
+          res.email && `📧 <code>${res.email}</code>`,
+          res.password && `🔒 <code>${res.password}</code>`,
+        ]
+          .filter(Boolean)
+          .join('\n');
+        text = text + '\n-----\n' + message;
+      }
+    }
 
     await this.bot.telegram.sendMessage(
       Number(this.config.get<number>('MANAGER')!),
-      `<pre>${text}</pre>`,
+      text,
       { parse_mode: 'HTML' },
     );
   }
@@ -362,19 +448,33 @@ export class BotService {
     }
   }
 
+  async deleteMessageFromUser(userId: number, messagId: number) {
+    await this.bot.telegram.deleteMessage(userId, messagId).catch((e) => {
+      console.log(e);
+    });
+  }
+
   async updateLastMessageAndEditOldMessage(userId: number, messagId: number) {
     const mesId: number | undefined = await this.userService.updateLastMessage(
       userId,
       messagId,
     );
     if (mesId)
-      await this.bot.telegram
-        .editMessageText(userId, mesId, undefined, '♻️.')
-        .catch(async () => {
-          await this.bot.telegram.deleteMessage(userId, mesId).catch((e) => {
+      await this.bot.telegram.deleteMessage(userId, mesId).catch(async () => {
+        await this.bot.telegram
+          .editMessageText(userId, mesId, undefined, '.')
+          .catch((e) => {
             console.log(e);
           });
-        });
+      });
+
+    // await this.bot.telegram
+    //   .editMessageText(userId, mesId, undefined, '♻️.')
+    //   .catch(async () => {
+    //     await this.bot.telegram.deleteMessage(userId, mesId).catch((e) => {
+    //       console.log(e);
+    //     });
+    //   });
   }
 
   async confirmation(userId: number) {
@@ -753,7 +853,7 @@ export class BotService {
     let step = 1;
     for (const user of filledUsers) {
       const label = user?.status
-        ? `<b>${step}: ${user.confirmation ? '✅🚀' : '⏰🚀'} ${user.anonName}</b>`
+        ? `<b>${step}: ${user.anonName}</b> ${user.confirmation ? '✅' : '⏰'}`
         : `<b>${step}: </b>---------------`;
       userLines.push(label);
       step++;
@@ -762,7 +862,7 @@ export class BotService {
     // Объединение с разделителем │
     const combinedLines = battery.map((b, i) => `${b} │ ${userLines[i]}`);
 
-    const header = `${group.name}\n\n🔸🔸🔸🔸🔸🔸🔸🔸\n🔸<b>${group.promo}</b>\n🔸🔸🔸🔸🔸🔸🔸\n\n`;
+    const header = `${group.finish ? '🏁' : ''} ${group.name}\n\n🔸🔸🔸🔸🔸🔸🔸🔸\n🔸<b>${group.promo}</b>\n🔸🔸🔸🔸🔸🔸🔸\n\n`;
     const body = combinedLines.join('\n');
     return `${header}${body}`;
   }
@@ -830,7 +930,7 @@ export class BotService {
     }
     await this.bot.telegram
       .editMessageText(
-        this.config.get<number>('GROUP_TELEGRAM_OPEN'),
+        Number(this.config.get<number>('GROUP_TELEGRAM_OPEN')!),
         messageId,
         undefined,
         list,
@@ -842,7 +942,10 @@ export class BotService {
           error instanceof Error &&
           'response' in error &&
           // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-          (error as any).response?.error_code === 400
+          (error as any).response?.error_code === 400 &&
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          (error as any).response?.description !==
+            'Bad Request: message is not modified: specified new message content and reply markup are exactly the same as a current content and reply markup of the message'
         ) {
           await this.sendMessageToGroup(list, groupId);
         } else {

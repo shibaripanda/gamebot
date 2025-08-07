@@ -13,11 +13,10 @@ interface ConfirmModalModalProps {
   paymentsMetods: PaymentMetod[];
 }
 
-export function ConfirmModal({ сonfirmModal, topConfirmModal, editRegUsers, selection, action, groupId, setSelection, paymentsMetods }: ConfirmModalModalProps) {
+export function ConfirmModal({ сonfirmModal, topConfirmModal, editRegUsers, selection, action, groupId, setSelection }: ConfirmModalModalProps) {
 
   const buttons = () => {
-    if(action !== 'Rekviziti'){
-      return (
+        return (
         <Button
           color={action === 'Delete' ? 'red' : 'green'}
           onClick={async () =>{
@@ -30,27 +29,6 @@ export function ConfirmModal({ сonfirmModal, topConfirmModal, editRegUsers, sel
             {action}
         </Button>
       )
-    }
-    return(
-      <>
-      <Group>
-        {paymentsMetods.map(but => 
-        <Button
-          color='green'
-          key={but._id}
-          onClick={async () =>{
-            if(action){
-              await editRegUsers(selection, groupId, action, but._id)
-              setSelection([])
-              topConfirmModal.close()
-            }
-          }}>
-          {but.paymentName}
-        </Button>)}
-      </Group>
-      <Space h='xl'/>
-      </>
-    )
   }
   return (
     <>

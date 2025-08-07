@@ -20,6 +20,14 @@ export class GroupService {
   //   this.appGateway = appGateway;
   // }
 
+  async closeGroup(groupId: string) {
+    return await this.groupMongo.findOneAndUpdate(
+      { _id: groupId },
+      { hidden: true, finish: true },
+      { new: true },
+    );
+  }
+
   async unConfirmUsersInGroup(
     groupId: string,
     userInGroupIds: string[],
@@ -129,7 +137,8 @@ export class GroupService {
 
     if (result.modifiedCount === 0) return null;
 
-    return this.groupMongo.findById(groupId);
+    const updatedGroup = await this.groupMongo.findById(groupId);
+    return updatedGroup;
   }
 
   async deleteUsersInGroupAndSetNull(
@@ -232,8 +241,9 @@ export class GroupService {
     return emojis[randomIndex];
   }
 
-  getRandomTwoDigitNumber(): number {
-    return Math.floor(Math.random() * 90) + 10;
+  getRandomArrayElement<T>(array: T[]): T {
+    const randomIndex = Math.floor(Math.random() * array.length);
+    return array[randomIndex];
   }
 
   async confirmUserInGroup(userId: number): Promise<DataNewReg | null> {
