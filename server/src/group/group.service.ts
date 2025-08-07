@@ -334,7 +334,7 @@ export class GroupService {
     return cleanedGroups;
   }
 
-  async getGroup(id: string): Promise<Group | null> {
+  async getGroup(id: string): Promise<GroupDocument | null> {
     const group = await this.groupMongo.findOne({ _id: id });
     if (!group) return null;
 

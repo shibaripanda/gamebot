@@ -21,4 +21,6 @@ export interface RegUser {
   byByKruger: boolean;
   imagePromoForReg: string;
   confirmation: boolean;
+  recivedAlianceName: boolean;
+  recivedRekviziti: boolean;
 }

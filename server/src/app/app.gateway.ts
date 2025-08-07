@@ -94,11 +94,7 @@ export class AppGateway
         payload.idRegUsersForDeleteOrEdit,
       );
     } else if (payload.action === 'Aliance') {
-      res = await this.botService.sendPaymentToKrugerUsers(
-        payload.groupId,
-        payload.idRegUsersForDeleteOrEdit,
-        payload.payment,
-      );
+      res = await this.botService.sendAlianceNameToGroupUsers(payload.groupId);
       return { success: true, message: 'Подтверждено', group: res };
     }
     if (res) {
@@ -110,6 +106,52 @@ export class AppGateway
     }
     return { success: false, message: 'Ошибка' };
   }
+
+  // @SubscribeMessage('editRegUsers')
+  // @UseGuards(WsJwtAuthGuard)
+  // async handleEditRegUsers(
+  //   client: Socket,
+  //   payload: EditRegUsers,
+  // ): Promise<any> {
+  //   let res: Group | null | false = null;
+  //   if (payload.action === 'Delete') {
+  //     res = await this.groupService.deleteUsersInGroupAndSetNull(
+  //       payload.groupId,
+  //       payload.idRegUsersForDeleteOrEdit,
+  //     );
+  //   } else if (payload.action === 'Confirm') {
+  //     res = await this.groupService.confirmUsersInGroup(
+  //       payload.groupId,
+  //       payload.idRegUsersForDeleteOrEdit,
+  //     );
+  //     if (res) {
+  //       await this.botService.notifyUsersInGroupByIdsConfirmation(
+  //         payload.groupId,
+  //         payload.idRegUsersForDeleteOrEdit,
+  //       );
+  //     }
+  //   } else if (payload.action === 'Unconfirm') {
+  //     res = await this.groupService.unConfirmUsersInGroup(
+  //       payload.groupId,
+  //       payload.idRegUsersForDeleteOrEdit,
+  //     );
+  //   } else if (payload.action === 'Aliance') {
+  //     res = await this.botService.sendPaymentToKrugerUsers(
+  //       payload.groupId,
+  //       payload.idRegUsersForDeleteOrEdit,
+  //       payload.payment,
+  //     );
+  //     return { success: true, message: 'Подтверждено', group: res };
+  //   }
+  //   if (res) {
+  //     await this.botService.sendOrUpdateMessage(
+  //       res._id,
+  //       res.messageIdInTelegramGroup,
+  //     );
+  //     return { success: true, message: 'Подтверждено', group: res };
+  //   }
+  //   return { success: false, message: 'Ошибка' };
+  // }
 
   @SubscribeMessage('editPaymentsMetods')
   @UseGuards(WsJwtAuthGuard)

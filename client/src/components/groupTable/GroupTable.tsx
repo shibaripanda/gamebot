@@ -54,6 +54,8 @@ export function GroupTable({users, editRegUsers, groupId, paymentsMetods, group,
           <Checkbox checked={selection.includes(item._id)} onChange={() => toggleRow(item._id)} />
         </Table.Td>
         <Table.Td>{item.confirmation ? '✅' : '⏰'}</Table.Td>
+        <Table.Td>{item.recivedAlianceName ? '✉️' : ''}</Table.Td>
+        <Table.Td>{item.recivedRekviziti ? '✉️' : ''}</Table.Td>
         <Table.Td>{item.anonName}</Table.Td>
         <Table.Td>{item.gameName}</Table.Td>
         <Table.Td>{item.email}</Table.Td>
@@ -90,7 +92,7 @@ export function GroupTable({users, editRegUsers, groupId, paymentsMetods, group,
             >
             Удалить</Button>
             <Button
-            disabled={users.length !== group.maxCountUsersInGroup}
+            // disabled={users.length !== group.maxCountUsersInGroup}
             onClick={() => {
               setSelection([...users.map(user => user._id)]);
               setAction('Aliance')
@@ -98,7 +100,7 @@ export function GroupTable({users, editRegUsers, groupId, paymentsMetods, group,
             }}
             >Альянс</Button>
             <Button
-            disabled={users.length === group.maxCountUsersInGroup}
+            disabled={!users.map(us => us.recivedAlianceName).includes(true)}
             onClick={() => {
               setSelection([...users.filter(user => user.byByKruger === true).map(user => user._id)]);
               setAction('Rekviziti')
@@ -136,14 +138,16 @@ export function GroupTable({users, editRegUsers, groupId, paymentsMetods, group,
                     indeterminate={selection.length > 0 && selection.length !== users.length}
                 />
                 </Table.Th>
-                <Table.Th>Confirm</Table.Th>
-                <Table.Th>Anon Name</Table.Th>
-                <Table.Th>Game Name</Table.Th>
+                <Table.Th>Оплата</Table.Th>
+                <Table.Th>Альянс</Table.Th>
+                <Table.Th>Реквизиты</Table.Th>
+                <Table.Th>Анон Имя</Table.Th>
+                <Table.Th>Игровое Имя</Table.Th>
                 <Table.Th>Email</Table.Th>
-                <Table.Th>Password</Table.Th>
+                <Table.Th>Пароль</Table.Th>
                 {/* <Table.Th>Username</Table.Th> */}
                 {/* <Table.Th>Status</Table.Th> */}
-                <Table.Th>Date</Table.Th>
+                <Table.Th>Дата</Table.Th>
             </Table.Tr>
             </Table.Thead>
             <Table.Tbody>{rows}</Table.Tbody>

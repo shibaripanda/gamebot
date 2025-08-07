@@ -19,6 +19,93 @@ export class BotService {
     private appService: AppService,
   ) {}
 
+  async sendAlianceNameToGroupUsers(groupId: string): Promise<Group | false> {
+    const group = await this.groupService.getGroup(groupId);
+    if (!group) {
+      console.error('Group not found');
+      return false;
+    }
+
+    let wasUpdated = false;
+
+    for (const user of group.users) {
+      if (!user || !user.telegramId || user.recivedAlianceName) {
+        console.log('Ошибка отправки Альянса или уже получено');
+        continue;
+      }
+
+      try {
+        await this.bot.telegram
+          .sendMessage(
+            user.telegramId,
+            `<b>${user.gameName} (${user.anonName})</b>\nAliance: ${group.aliance}`,
+            { parse_mode: 'HTML' },
+          )
+          .then((res: Message) => {
+            user.recivedAlianceName = true;
+            wasUpdated = true;
+            console.log(res.message_id);
+            // await this.updateLastMessageAndEditOldMessage(
+            //   user.telegramId,
+            //   res.message_id,
+            // );
+          })
+          .catch((er) => {
+            console.log(er);
+          });
+      } catch (err) {
+        console.error(
+          `Ошибка при отправке сообщения юзеру ${user.telegramId}`,
+          err,
+        );
+      }
+    }
+
+    if (wasUpdated) {
+      await group.save(); // Сохраняем обновлённые флаги пользователей
+    }
+
+    await this.managerMessage(group);
+
+    return group;
+  }
+
+  async managerMessage(group: Group) {
+    let text = `${group.name} | ${group.promo} | ${group.aliance} | ${group.present ? '🎁' : ''}`;
+    for (const res of group.users) {
+      if (res) {
+        const message = [
+          `${group.users.indexOf(res) + 1}. ${res.byByKruger ? 'Kruger' : 'Сам'}`,
+          `🥸 ${res.anonName}`,
+          `🎮 ${res.gameName}`,
+          res.email && `📧 ${res.email}`,
+          res.password && `🔒 ${res.password}`,
+        ]
+          .filter(Boolean) // удаляет undefined/false/null/'' элементы
+          .join('\n');
+        text = text + '\n-\n' + message;
+      }
+    }
+    // for (const res of group.users) {
+    //   if (res) {
+    //     const message = [
+    //       `${group.users.indexOf(res) + 1}. ${res.byByKruger ? 'Kruger' : 'Сам'}`,
+    //       `🥸 <code>${res.anonName}</code>`,
+    //       `🎮 <code>${res.gameName}</code>`,
+    //       `📧 <code>${res.email}</code>`,
+    //       `🔒 <code>${res.password}</code>`,
+    //     ].join('\n');
+    //     text = text + '\n-----\n' + message;
+    //   }
+    // }
+
+    await this.bot.telegram.sendMessage(
+      Number(this.config.get<number>('MANAGER')!),
+      `<pre>${text}</pre>`,
+      { parse_mode: 'HTML' },
+    );
+  }
+
   async sendPaymentToKrugerUsers(
     groupId: string,
     regUsersIds: string[],

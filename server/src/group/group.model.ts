@@ -44,6 +44,16 @@ export const UserInGroupSchema = new mongoose.Schema(
       default: false,
       require: true,
     },
+    recivedAlianceName: {
+      type: Boolean,
+      default: false,
+      require: true,
+    },
+    recivedRekviziti: {
+      type: Boolean,
+      default: false,
+      require: true,
+    },
   },
   { timestamps: false },
 );
@@ -118,6 +128,8 @@ export interface UserInGroup {
   imagePromoForReg: string;
   confirmation: boolean;
   screenNoPromo: string;
+  recivedAlianceName: boolean;
+  recivedRekviziti: boolean;
 }
 
 export interface Group {

@@ -16,7 +16,7 @@ interface ConfirmModalModalProps {
 export function ConfirmModal({ сonfirmModal, topConfirmModal, editRegUsers, selection, action, groupId, setSelection, paymentsMetods }: ConfirmModalModalProps) {
 
   const buttons = () => {
-    if(action !== 'Aliance'){
+    if(action !== 'Rekviziti'){
       return (
         <Button
           color={action === 'Delete' ? 'red' : 'green'}

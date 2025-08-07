@@ -1,15 +1,33 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { User, UserDocument } from './user.model';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
-export class UserService {
-  constructor(@InjectModel('User') private userMongo: Model<UserDocument>) {}
+export class UserService implements OnModuleInit {
+  constructor(
+    @InjectModel('User') private userMongo: Model<UserDocument>,
+    private readonly config: ConfigService,
+  ) {}
 
-  admins: number[] = [599773731];
+  admins: number[] = [];
 
-  //313838574 494257350
+  onModuleInit() {
+    const adminsStr = this.config.get<string>('ADMINS');
+    this.admins = adminsStr
+      ? adminsStr.split(',').map((id) => Number(id.trim()))
+      : [];
+
+    console.log(this.admins); // [599773731, 123456789]
+  }
+
+  // async recivedAlianceNameSet(userId: number) {
+  //   await this.userMongo.updateOne(
+  //     { id: userId },
+  //     { recivedAlianceName: true },
+  //   );
+  // }
 
   async addRegData(userId: number, field: string, data: string) {
     await this.userMongo.updateOne({ id: userId }, { [field]: data });
