@@ -16,4 +16,5 @@ export interface Group {
   maxCountUsersInGroupForKruger: number;
   image: string;
   finish: boolean;
+  promoText: string;
 }

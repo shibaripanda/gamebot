@@ -23,4 +23,5 @@ export interface RegUser {
   confirmation: boolean;
   recivedAlianceName: boolean;
   recivedRekviziti: boolean;
+  telegramUsername: string;
 }

@@ -3,6 +3,7 @@ import classes from './TableGroups.module.css';
 import { Group } from '../../pages/dashboardPage/interfaces/group';
 import { GroupTable } from '../groupTable/GroupTable';
 import { PaymentMetod } from '../../pages/dashboardPage/interfaces/paymentMedod';
+import { Socket } from 'socket.io-client';
 
 interface GroupsProps {
   groups: Group[];
@@ -10,9 +11,10 @@ interface GroupsProps {
   paymentsMetods: PaymentMetod[];
   updateGroupSettings: any;
   deleteGroup: any;
+  socket: Socket;
 }
 
-export function TableGroups({groups, editRegUsers, paymentsMetods, updateGroupSettings, deleteGroup }: GroupsProps) {
+export function TableGroups({socket, groups, editRegUsers, paymentsMetods, updateGroupSettings, deleteGroup }: GroupsProps) {
 
     if(!groups.length) return
 
@@ -39,7 +41,8 @@ export function TableGroups({groups, editRegUsers, paymentsMetods, updateGroupSe
                         </MantineGroup>
                         </Accordion.Control>
                     <Accordion.Panel>
-                        <GroupTable 
+                        <GroupTable
+                        socket={socket} 
                         users={gr.users.filter(user => user && user.status === true)} 
                         editRegUsers={editRegUsers} 
                         groupId={gr._id}

@@ -202,6 +202,17 @@ export class AppGateway
     };
   }
 
+  @SubscribeMessage('getImage')
+  @UseGuards(WsJwtAuthGuard)
+  async handleGetPromoImageAndText(
+    client: Socket,
+    payload: string,
+  ): Promise<any> {
+    const res = await this.botService.getImage(payload);
+    if (!res) return { success: false, message: 'Ошибка' };
+    return { success: true, message: 'ОК', res };
+  }
+
   @SubscribeMessage('deleteGroup')
   @UseGuards(WsJwtAuthGuard)
   async handleDeleteGroup(client: Socket, payload: string): Promise<any> {

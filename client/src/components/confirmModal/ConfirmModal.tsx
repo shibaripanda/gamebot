@@ -1,4 +1,4 @@
-import { Button, Group, Modal, Space } from '@mantine/core';
+import { Button, Group, Modal } from '@mantine/core';
 import { Actions } from '../groupTable/GroupTable';
 import { PaymentMetod } from '../../pages/dashboardPage/interfaces/paymentMedod';
 
@@ -16,19 +16,21 @@ interface ConfirmModalModalProps {
 export function ConfirmModal({ сonfirmModal, topConfirmModal, editRegUsers, selection, action, groupId, setSelection }: ConfirmModalModalProps) {
 
   const buttons = () => {
-        return (
+    if (action) {
+      return (
         <Button
-          color={action === 'Delete' ? 'red' : 'green'}
+          color={['Delete', 'Bun'].includes(action.action) ? 'red' : 'green'}
           onClick={async () =>{
             if(action){
-              await editRegUsers(selection, groupId, action)
+              await editRegUsers(selection, groupId, action.action)
               setSelection([])
               topConfirmModal.close()
             }
           }}>
-            {action}
+            {action.title}
         </Button>
       )
+    }
   }
   return (
     <>

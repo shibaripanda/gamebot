@@ -8,6 +8,7 @@ import { ConfirmModal } from '../confirmModal/ConfirmModal';
 import { PaymentMetod } from '../../pages/dashboardPage/interfaces/paymentMedod';
 import { Group } from '../../pages/dashboardPage/interfaces/group';
 import { SettingsModal } from '../settingsModal/SettingsModal';
+import { Socket } from 'socket.io-client';
 
 interface UserProps {
   users: RegUser[];
@@ -17,10 +18,18 @@ interface UserProps {
   group: Group;
   updateGroupSettings: any;
   deleteGroup: any;
+  socket: Socket;
 }
-export type Actions = 'Delete' | 'Confirm' | 'Unconfirm' | 'Aliance' | 'Rekviziti' | false
+export type Actions = 
+{action: 'Confirm', title: 'Зарегестрировать оплату'} | 
+{action: 'Unconfirm', title: 'Отменить регистрацию оплаты'} | 
+{action: 'Aliance', title: 'Послать название Альянса'} | 
+{action: 'Rekviziti', title: 'Послать реквизиты'} | 
+{action: 'Delete', title: 'Удалить запись пользователя на акцию'} | 
+{action: 'Bun', title: 'Ограничить доступ пользователя к боту'} |
+false
 
-export function GroupTable({users, editRegUsers, groupId, paymentsMetods, group, updateGroupSettings, deleteGroup }: UserProps) {
+export function GroupTable({socket, users, editRegUsers, groupId, paymentsMetods, group, updateGroupSettings, deleteGroup }: UserProps) {
   const [selection, setSelection] = useState<string[]>([]);
   const [сonfirmModal, topConfirmModal] = useDisclosure(false);
   const [action, setAction] = useState<Actions>(false)
@@ -54,12 +63,13 @@ export function GroupTable({users, editRegUsers, groupId, paymentsMetods, group,
           <Checkbox checked={selection.includes(item._id)} onChange={() => toggleRow(item._id)} />
         </Table.Td>
         <Table.Td>{item.confirmation ? '✅' : '⏰'}</Table.Td>
-        <Table.Td>{item.recivedAlianceName ? '✉️' : ''}</Table.Td>
-        <Table.Td>{item.recivedRekviziti ? '✉️' : ''}</Table.Td>
+        <Table.Td>{item.telegramUsername}</Table.Td>
         <Table.Td>{item.anonName}</Table.Td>
         <Table.Td>{item.gameName}</Table.Td>
         <Table.Td>{item.email}</Table.Td>
         <Table.Td>{item.password}</Table.Td>
+        <Table.Td>{item.recivedAlianceName ? '✉️' : ''}</Table.Td>
+        <Table.Td>{item.recivedRekviziti ? '✉️' : ''}</Table.Td>
         {/* <Table.Td>{item.status}</Table.Td> */}
         <Table.Td>{formatDateOrTime(item.date)}</Table.Td>
       </Table.Tr>
@@ -86,7 +96,16 @@ export function GroupTable({users, editRegUsers, groupId, paymentsMetods, group,
             color='red'
             disabled={!selection.length}
             onClick={() => {
-              setAction('Delete')
+              setAction({action: 'Bun', title: 'Ограничить доступ пользователя к боту'})
+              topConfirmModal.open()
+            }}
+            >
+            Бан</Button>
+            <Button
+            color='red'
+            disabled={!selection.length}
+            onClick={() => {
+              setAction({action: 'Delete', title: 'Удалить запись пользователя на акцию'})
               topConfirmModal.open()
             }}
             >
@@ -95,7 +114,7 @@ export function GroupTable({users, editRegUsers, groupId, paymentsMetods, group,
             disabled={users.length === users.filter((us) => us.recivedAlianceName).length}
             onClick={() => {
               setSelection([...users.map(user => user._id)]);
-              setAction('Aliance')
+              setAction({action: 'Aliance', title: 'Послать название Альянса'})
               topConfirmModal.open()
             }}
             >Альянс</Button>
@@ -106,7 +125,7 @@ export function GroupTable({users, editRegUsers, groupId, paymentsMetods, group,
             }
             onClick={() => {
               setSelection([...users.filter(user => user.byByKruger === true).map(user => user._id)]);
-              setAction('Rekviziti')
+              setAction({action: 'Rekviziti', title: 'Послать реквизиты'})
               topConfirmModal.open()
             }}
             >
@@ -115,7 +134,7 @@ export function GroupTable({users, editRegUsers, groupId, paymentsMetods, group,
             color='green'
             disabled={!selection.length}
             onClick={() => {
-              setAction('Confirm')
+              setAction({action: 'Confirm', title: 'Зарегестрировать оплату'})
               topConfirmModal.open()
             }}
             >
@@ -123,7 +142,7 @@ export function GroupTable({users, editRegUsers, groupId, paymentsMetods, group,
             <Button
             disabled={!selection.length}
             onClick={() => {
-              setAction('Unconfirm')
+              setAction({action: 'Unconfirm', title: 'Отменить регистрацию оплаты'})
               topConfirmModal.open()
             }}
             >
@@ -142,12 +161,13 @@ export function GroupTable({users, editRegUsers, groupId, paymentsMetods, group,
                 />
                 </Table.Th>
                 <Table.Th>Оплата</Table.Th>
-                <Table.Th>Альянс</Table.Th>
-                <Table.Th>Реквизиты</Table.Th>
+                <Table.Th>@username</Table.Th>
                 <Table.Th>Анон Имя</Table.Th>
                 <Table.Th>Игровое Имя</Table.Th>
                 <Table.Th>Email</Table.Th>
                 <Table.Th>Пароль</Table.Th>
+                <Table.Th>Альянс</Table.Th>
+                <Table.Th>Реквизиты</Table.Th>
                 {/* <Table.Th>Username</Table.Th> */}
                 {/* <Table.Th>Status</Table.Th> */}
                 <Table.Th>Дата</Table.Th>
@@ -156,7 +176,8 @@ export function GroupTable({users, editRegUsers, groupId, paymentsMetods, group,
             <Table.Tbody>{rows}</Table.Tbody>
         </Table>
     </ScrollArea>
-    <SettingsModal 
+    <SettingsModal
+    socket={socket} 
     settingsmModal={settingsmModal} 
     settingsmModalUse={settingsmModalUse}
     group={group}

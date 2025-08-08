@@ -54,6 +54,11 @@ export const UserInGroupSchema = new mongoose.Schema(
       default: false,
       require: true,
     },
+    telegramUsername: {
+      type: String,
+      require: true,
+      default: '',
+    },
   },
   { timestamps: false },
 );
@@ -116,6 +121,16 @@ export const GroupSchema = new mongoose.Schema(
       require: true,
       default: false,
     },
+    finishTime: {
+      type: Number,
+      require: true,
+      default: 0,
+    },
+    promoText: {
+      type: String,
+      require: true,
+      default: 'Текст акции для рассылки',
+    },
   },
   { timestamps: true },
 );
@@ -135,6 +150,7 @@ export interface UserInGroup {
   screenNoPromo: string;
   recivedAlianceName: boolean;
   recivedRekviziti: boolean;
+  telegramUsername: string;
 }
 
 export interface Group {
@@ -151,6 +167,8 @@ export interface Group {
   maxCountUsersInGroupForKruger: number;
   image: string;
   finish: boolean;
+  finishTime: number;
+  promoText: string;
 }
 
 export type GroupDocument = Group & mongoose.Document;

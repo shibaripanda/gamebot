@@ -1,6 +1,7 @@
-import { Button, Group as MantineGroup, Modal, Slider, Space, Switch, Text, TextInput } from '@mantine/core';
+import { Button, ButtonGroupSection, Divider, Image, Group as MantineGroup, Modal, Paper, Slider, Space, Switch, Text, Textarea, TextInput } from '@mantine/core';
 import { Group } from '../../pages/dashboardPage/interfaces/group';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Socket } from 'socket.io-client';
 
 interface SettingsModalProps {
   settingsmModal: boolean;
@@ -8,14 +9,25 @@ interface SettingsModalProps {
   group: Group;
   updateGroupSettings: any;
   deleteGroup: any;
+  socket: Socket;
 }
 
-export function SettingsModal({ settingsmModal, settingsmModalUse, group, updateGroupSettings, deleteGroup }: SettingsModalProps) {
+export function SettingsModal({ socket, settingsmModal, settingsmModalUse, group, updateGroupSettings, deleteGroup }: SettingsModalProps) {
 
   const [value, setValue] = useState(group.maxCountUsersInGroupForKruger);
   const [valueGroup, setValueGroup] = useState(group.maxCountUsersInGroup);
   const [groupNameForDelete, setGroupNameForDelete] = useState('');
   const [onOff, setOnOff] = useState(group.hidden);
+  const [promoImage, setPromoImage] = useState<string | false>(false)
+  const [promoText, setPromoText] = useState<string>(group.promoText)
+
+  useEffect(() => {
+    if (settingsmModal)
+    socket.emit('getImage', group.image, (response: {success: boolean, message: string, res: string}) => {
+      if(!response.success) return
+      setPromoImage(response.res)
+    });
+  }, [settingsmModal])
 
   const slider = () => {
       return (
@@ -76,7 +88,20 @@ export function SettingsModal({ settingsmModal, settingsmModalUse, group, update
           <Text>{group.name}</Text>
           {offOn()}
         </MantineGroup>
-        <Space h='xl'/>
+        <Space h='xs'/>
+        <Paper withBorder style={{padding: '10px'}}>
+          {promoImage ? <Image src={promoImage} alt="Promo image" radius="sm" h='150' /> : ''}
+          <Space h='xs'/>
+          <Textarea
+          resize="vertical"
+          value={promoText}
+          onChange={(v) => {
+            setPromoText(v.target.value)
+          }}
+          />
+          <Space h='xs'/>
+          <Button variant={'default'} size='xs'>Тест</Button>
+        </Paper>
         <Space h='xl'/>
 
         <>{slider()}</>
@@ -90,33 +115,37 @@ export function SettingsModal({ settingsmModal, settingsmModalUse, group, update
           onClick={() => {
             setValue(group.maxCountUsersInGroupForKruger)
             setValueGroup(group.maxCountUsersInGroup)
+            setPromoText(group.promoText)
             settingsmModalUse.close()
           }}
           >
             Отмена
           </Button>
           <Button
-          disabled={value === group.maxCountUsersInGroupForKruger && valueGroup === group.maxCountUsersInGroup && onOff === group.hidden}
+          disabled={
+            value === group.maxCountUsersInGroupForKruger && 
+            valueGroup === group.maxCountUsersInGroup && 
+            onOff === group.hidden &&
+            promoText === group.promoText
+          }
           onClick={() => {
             updateGroupSettings({groupId: group._id, data: 
               {
+                promoText: promoText,
                 maxCountUsersInGroupForKruger: value, 
                 maxCountUsersInGroup: valueGroup,
                 hidden: onOff,
               }})
-            settingsmModalUse.close()
+            // settingsmModalUse.close()
           }}
           >
             Сохранить
           </Button>
         </MantineGroup>
-        <Space h='xl'/>
+        <Space h='md'/>
+        <Divider/>
+        <Space h='xs'/>
         <MantineGroup justify="space-between">
-          <TextInput
-          placeholder='Имя группы для удаления'
-          value={groupNameForDelete}
-          onChange={(v) => setGroupNameForDelete(v.target.value)}
-          />
           <Button
           color='red'
           disabled={groupNameForDelete !== group.name}
@@ -127,6 +156,11 @@ export function SettingsModal({ settingsmModal, settingsmModalUse, group, update
           >
             Удалить
           </Button>
+          <TextInput
+          placeholder='Имя группы для удаления'
+          value={groupNameForDelete}
+          onChange={(v) => setGroupNameForDelete(v.target.value)}
+          />
         </MantineGroup>
       </Modal>
     </>

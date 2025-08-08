@@ -19,6 +19,21 @@ export class BotService {
     private appService: AppService,
   ) {}
 
+  async getImage(file_id: string) {
+    try {
+      const file = await this.bot.telegram.getFile(file_id);
+      const fileUrl = `https://api.telegram.org/file/bot${this.config.get<string>('BOT_TOKEN')}/${file.file_path}`;
+      const res = await fetch(fileUrl);
+      const arrayBuffer = await res.arrayBuffer();
+      const base64 = Buffer.from(arrayBuffer).toString('base64');
+      const mime = res.headers.get('content-type') || 'image/jpeg';
+      return `data:${mime};base64,${base64}`;
+    } catch (err) {
+      console.error('Ошибка загрузки фото из Telegram:', err);
+      return null;
+    }
+  }
+
   async finishGroupRegistration(group: Group) {
     await this.bot.telegram
       .sendMessage(

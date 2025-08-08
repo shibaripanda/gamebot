@@ -23,7 +23,7 @@ export class GroupService {
   async closeGroup(groupId: string) {
     return await this.groupMongo.findOneAndUpdate(
       { _id: groupId },
-      { hidden: true, finish: true },
+      { hidden: true, finish: true, finishTime: Date.now() },
       { new: true },
     );
   }
@@ -276,6 +276,7 @@ export class GroupService {
           [`${fieldPath}.anonName`]: anonName,
           [`${fieldPath}.byByKruger`]: true,
           [`${fieldPath}.imagePromoForReg`]: user.reg_screenNoPromo,
+          [`${fieldPath}.telegramUsername`]: user.username,
         },
       },
     );
@@ -284,7 +285,6 @@ export class GroupService {
 
     const updatedGroup = await this.groupMongo.findById(user.reg_groupId);
     const updatedUser = updatedGroup?.users?.[targetIndex];
-    console.log(updatedUser, 'ssssssssssssss');
 
     if (!updatedUser) return null;
 

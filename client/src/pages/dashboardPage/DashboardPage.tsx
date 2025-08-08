@@ -185,7 +185,8 @@ export function DashboardPage() {
           />
         </MantineGroup>
       </Center>
-      <TableGroups 
+      <TableGroups
+      socket={socketRef.current} 
       editRegUsers={editRegUsers} 
       paymentsMetods={paymentsMetods} 
       updateGroupSettings={updateGroupSettings}
