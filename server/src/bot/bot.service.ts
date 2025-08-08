@@ -34,6 +34,52 @@ export class BotService {
     }
   }
 
+  async testPromoMessage(groupId: string, userId: number) {
+    const group = await this.groupService.getGroup(groupId);
+    if (!group) {
+      console.error('Group not found');
+      return false;
+    }
+    const buttons = [
+      [
+        {
+          text: `${group.promo}`,
+          callback_data: 'reservPlaceInGroup:' + group._id,
+        },
+      ],
+    ];
+    if (!group.image) {
+      await this.bot.telegram
+        .sendMessage(userId, group.promoText, {
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: buttons,
+          },
+        })
+        .then(async (res: Message) => {
+          await this.updateLastMessageAndEditOldMessage(userId, res.message_id);
+        })
+        .catch((e) => {
+          console.log(e);
+        });
+    } else {
+      await this.bot.telegram
+        .sendPhoto(userId, group.image, {
+          caption: group.promoText,
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: buttons,
+          },
+        })
+        .then(async (res: Message) => {
+          await this.updateLastMessageAndEditOldMessage(userId, res.message_id);
+        })
+        .catch((e) => {
+          console.log(e);
+        });
+    }
+  }
+
   async finishGroupRegistration(group: Group) {
     await this.bot.telegram
       .sendMessage(
@@ -1180,13 +1226,19 @@ export class BotService {
   }
 
   async alertUserHaveAccess(userId: string) {
+    const user = await this.userService.getUser(Number(userId));
     await this.bot.telegram.sendMessage(
-      Number(userId),
-      'Выполнен вход в панель администратора',
+      Number(this.config.get<number>('MANAGER')!),
+      `Выполнен вход в панель администратора\n @${user?.username} | ${userId}`,
       {
         reply_markup: {
           inline_keyboard: [
-            [{ text: 'Закрыть доступ', callback_data: 'closeAccess' }],
+            [
+              {
+                text: 'Полностью закрыть доступ',
+                callback_data: 'closeAccess',
+              },
+            ],
           ],
         },
       },

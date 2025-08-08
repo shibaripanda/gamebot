@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { User, UserDocument } from './user.model';
 import { ConfigService } from '@nestjs/config';
 
@@ -22,12 +22,23 @@ export class UserService implements OnModuleInit {
     console.log(this.admins); // [599773731, 123456789]
   }
 
-  // async recivedAlianceNameSet(userId: number) {
-  //   await this.userMongo.updateOne(
-  //     { id: userId },
-  //     { recivedAlianceName: true },
-  //   );
-  // }
+  async getUsers() {
+    const res = await this.userMongo.find();
+    if (res) {
+      return res;
+    }
+  }
+
+  async getUsersTelegramIds(users_ids: string[]): Promise<number[]> {
+    const objectIds = users_ids.map((id) => new Types.ObjectId(id));
+
+    const users: User[] = await this.userMongo.find(
+      { _id: { $in: objectIds } },
+      { id: 1, _id: 0 }, // выбираем только telegramId
+    );
+
+    return users.map((u) => u.id);
+  }
 
   async addRegData(userId: number, field: string, data: string) {
     await this.userMongo.updateOne({ id: userId }, { [field]: data });

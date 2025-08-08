@@ -1,4 +1,10 @@
-import { Controller, ForbiddenException, Get, Param } from '@nestjs/common';
+import {
+  Controller,
+  ForbiddenException,
+  Get,
+  Param,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { AppService } from './app.service';
 import { BotService } from 'src/bot/bot.service';
 
@@ -11,6 +17,10 @@ export class AppController {
 
   @Get('access/:token')
   async checkToken(@Param('token') startToken: string) {
+    const access = await this.appService.getStatusAccess();
+    if (!access) {
+      throw new UnauthorizedException('Доступ закрыт');
+    }
     const res = await this.appService.validateToken(startToken);
     if (!res) {
       console.log('Close');

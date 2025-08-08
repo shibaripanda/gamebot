@@ -8,6 +8,7 @@ import { AppDocument, PaymentMetod } from './app.model';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { AppGateway } from './app.gateway';
+import { UserService } from 'src/user/user.service';
 
 @Injectable()
 export class AppService implements OnModuleInit {
@@ -17,6 +18,7 @@ export class AppService implements OnModuleInit {
   constructor(
     private readonly config: ConfigService,
     private jwt: JwtService,
+    private userService: UserService,
     @InjectModel('App') private appMongo: Model<AppDocument>,
   ) {
     console.log('AppService initialized');
@@ -26,12 +28,55 @@ export class AppService implements OnModuleInit {
     this.appGateway = appGateway;
   }
 
+  async unBunUsers(userIds: string[]) {
+    const usersTelegramIds =
+      await this.userService.getUsersTelegramIds(userIds);
+
+    await this.appMongo.updateOne(
+      { app: 'app' },
+      { $pull: { bunUsers: { $in: usersTelegramIds } } }, // $in вместо $each
+    );
+  }
+
+  async bunUsers(userIds: string[]) {
+    const usersTelegramIds =
+      await this.userService.getUsersTelegramIds(userIds);
+    await this.appMongo.updateOne(
+      { app: 'app' },
+      { $addToSet: { bunUsers: { $each: usersTelegramIds } } },
+    );
+  }
+
   async onModuleInit() {
     await this.appMongo.updateOne(
       { app: 'app' },
       { $setOnInsert: { app: 'app', paymentMetods: [] } },
       { upsert: true },
     );
+  }
+
+  async getBunUsers() {
+    const res = await this.appMongo.findOne(
+      { app: 'app' },
+      { _id: 0, bunUsers: 1 },
+    );
+    if (res) return res.bunUsers;
+  }
+
+  async getStatusAccess() {
+    const res = await this.appMongo.findOne(
+      { app: 'app' },
+      { _id: 0, webAccess: 1 },
+    );
+    if (res) return res.webAccess;
+  }
+
+  async webAccessOpen() {
+    await this.appMongo.updateOne({ app: 'app' }, { webAccess: true });
+  }
+
+  async webAccessClose() {
+    await this.appMongo.updateOne({ app: 'app' }, { webAccess: false });
   }
 
   async deletePaymentMetod(metod: PaymentMetod) {

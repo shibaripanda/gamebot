@@ -25,6 +25,16 @@ export const AppSchema = new mongoose.Schema(
       type: [PaymentMetodSchema],
       default: [],
     },
+    webAccess: {
+      type: Boolean,
+      require: true,
+      default: true,
+    },
+    bunUsers: {
+      type: Array,
+      require: true,
+      default: [],
+    },
   },
   { timestamps: true },
 );
@@ -37,6 +47,8 @@ export interface PaymentMetod {
 
 export interface App {
   paymentMetods: [PaymentMetod];
+  webAccess: boolean;
+  bunUsers: number[];
 }
 
 export type PaymentMetodDocument = PaymentMetod & mongoose.Document;

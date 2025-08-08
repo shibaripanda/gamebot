@@ -1,4 +1,4 @@
-import { Button, ButtonGroupSection, Divider, Image, Group as MantineGroup, Modal, Paper, Slider, Space, Switch, Text, Textarea, TextInput } from '@mantine/core';
+import { Button, Divider, Image, Group as MantineGroup, Modal, Paper, Slider, Space, Switch, Text, Textarea, TextInput } from '@mantine/core';
 import { Group } from '../../pages/dashboardPage/interfaces/group';
 import { useEffect, useState } from 'react';
 import { Socket } from 'socket.io-client';
@@ -28,6 +28,10 @@ export function SettingsModal({ socket, settingsmModal, settingsmModalUse, group
       setPromoImage(response.res)
     });
   }, [settingsmModal])
+
+  const testPromoMessage = () => {
+    socket.emit('testPromoMessage', group._id);
+  }
 
   const slider = () => {
       return (
@@ -100,7 +104,11 @@ export function SettingsModal({ socket, settingsmModal, settingsmModalUse, group
           }}
           />
           <Space h='xs'/>
-          <Button variant={'default'} size='xs'>Тест</Button>
+          <Button 
+          variant={'default'} 
+          size='xs'
+          onClick={testPromoMessage}
+          >Тест</Button>
         </Paper>
         <Space h='xl'/>
 

@@ -10,15 +10,20 @@ import { GroupModule } from 'src/group/group.module';
 import { accessControlMiddleware } from './botGuardAndMiddleware/access-control.middleware';
 import { UserService } from 'src/user/user.service';
 import { AdminGuardAccess } from './botGuardAndMiddleware/access-control.guard';
+import { AppService } from 'src/app/app.service';
 
 @Module({
   imports: [
     TelegrafModule.forRootAsync({
       imports: [UserModule],
       inject: [ConfigService, UserService],
-      useFactory: (config: ConfigService, userService: UserService) => ({
+      useFactory: (
+        config: ConfigService,
+        userService: UserService,
+        appService: AppService,
+      ) => ({
         token: config.get<string>('BOT_TOKEN')!,
-        middlewares: [accessControlMiddleware(userService)],
+        middlewares: [accessControlMiddleware(userService, appService)],
         dropPendingUpdates: true,
       }),
     }),

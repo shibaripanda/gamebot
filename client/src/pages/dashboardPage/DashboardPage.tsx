@@ -12,6 +12,7 @@ import { GetGroup } from "./interfaces/getGroup";
 import { PaymentMetodModal } from "../../components/paymentMetodModal/PaymentMetodModal";
 import { PaymentMetod } from "./interfaces/paymentMedod";
 import { GetPaymentMetods } from "./interfaces/getPaymentMetods";
+import { UsersModal } from "../../components/usersModal/UsersModal";
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -49,6 +50,10 @@ export function DashboardPage() {
       console.log('updateGroup:', group);
       getGroups()
       getPamentMetods()
+    });
+    socket.on('closeAccess', () => {
+      // sessionStorage.removeItem('token');!!!!!!!!!!!!!!!!!!!!!! только dev mode
+      // navigate('/');
     });
     socket.on('connect_error', (err) => {
       console.error('Connection error:', err.message);
@@ -91,13 +96,13 @@ export function DashboardPage() {
     });
   }
 
-  const socketGetUpdates = (group: Group) => {
-    setGroups(ex =>
-      ex.map(gr =>
-        gr._id === group._id ? group : gr
-      )
-    )
-  }
+  // const socketGetUpdates = (group: Group) => {
+  //   setGroups(ex =>
+  //     ex.map(gr =>
+  //       gr._id === group._id ? group : gr
+  //     )
+  //   )
+  // }
 
   const updateGroupSettings = (data: object) => {
     if (!isSocketConnected) return;
@@ -160,10 +165,6 @@ export function DashboardPage() {
       <>
       <Center style={{ margin: '10px' }}>
         <MantineGroup justify="center" gap="xs">
-          <PaymentMetodModal paymentsMetods={paymentsMetods} editPaymentsMetods={editPaymentsMetods}/>
-          <Button variant="default" onClick={toggleTheme}>
-            {colorScheme === 'dark' ? 'Light' : 'Dark'}
-          </Button>
           <Button onClick={() => {
             sessionStorage.removeItem('token')
             navigate('/')
@@ -171,6 +172,13 @@ export function DashboardPage() {
           >
           Exit
           </Button>
+          <Button variant="default" onClick={toggleTheme}>
+            {colorScheme === 'dark' ? 'Light' : 'Dark'}
+          </Button>
+          <PaymentMetodModal paymentsMetods={paymentsMetods} editPaymentsMetods={editPaymentsMetods}/>
+          <UsersModal 
+          socket={socketRef.current}
+          />
           <TextInput
             placeholder="Поиск..."
             value={search}

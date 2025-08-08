@@ -17,6 +17,17 @@ import { BotService } from 'src/bot/bot.service';
 import { AppService } from './app.service';
 import { EditPaymentMetods } from './interfaces/editPaymentMetods';
 import { TelegramGateway } from 'src/bot/bot.telegramgateway';
+import { UserService } from 'src/user/user.service';
+
+interface SocketUserData {
+  data: {
+    user: {
+      userId: number;
+      username?: string;
+      // любые другие поля, которые ты добавляешь в гварде
+    };
+  };
+}
 
 @WebSocketGateway({
   cors: {
@@ -29,8 +40,9 @@ export class AppGateway
   constructor(
     private readonly socketAuthMiddleware: SocketAuthMiddleware,
     private readonly groupService: GroupService,
-    private botService: BotService,
+    private readonly botService: BotService,
     private readonly appService: AppService,
+    private readonly userService: UserService,
     private readonly telegramGatewayService: TelegramGateway,
   ) {}
   @WebSocketServer()
@@ -40,7 +52,7 @@ export class AppGateway
 
   afterInit(server: Server) {
     server.use((socket, next) => {
-      this.socketAuthMiddleware.use(socket, next);
+      void this.socketAuthMiddleware.use(socket, next);
     });
     this.logger.log('Socket server initialized');
     this.telegramGatewayService.setAppGateway(this);
@@ -59,6 +71,11 @@ export class AppGateway
   upData() {
     console.log('upData');
     this.server.emit('upData', Date.now());
+  }
+
+  closeAccess() {
+    console.log('closeAccess');
+    this.server.emit('closeAccess');
   }
 
   handleDisconnect(client: Socket) {
@@ -102,6 +119,12 @@ export class AppGateway
     } else if (payload.action === 'Rekviziti') {
       res = await this.botService.sendRekvizitiToGroupUsers(payload.groupId);
       return { success: true, message: 'Подтверждено', group: res };
+    } else if (payload.action === 'Bun') {
+      res = await this.groupService.deleteUsersInGroupAndSetNull(
+        payload.groupId,
+        payload.idRegUsersForDeleteOrEdit,
+      );
+      await this.appService.bunUsers(payload.idRegUsersForDeleteOrEdit);
     }
     if (res) {
       await this.botService.sendOrUpdateMessage(
@@ -112,52 +135,6 @@ export class AppGateway
     }
     return { success: false, message: 'Ошибка' };
   }
-
-  // @SubscribeMessage('editRegUsers')
-  // @UseGuards(WsJwtAuthGuard)
-  // async handleEditRegUsers(
-  //   client: Socket,
-  //   payload: EditRegUsers,
-  // ): Promise<any> {
-  //   let res: Group | null | false = null;
-  //   if (payload.action === 'Delete') {
-  //     res = await this.groupService.deleteUsersInGroupAndSetNull(
-  //       payload.groupId,
-  //       payload.idRegUsersForDeleteOrEdit,
-  //     );
-  //   } else if (payload.action === 'Confirm') {
-  //     res = await this.groupService.confirmUsersInGroup(
-  //       payload.groupId,
-  //       payload.idRegUsersForDeleteOrEdit,
-  //     );
-  //     if (res) {
-  //       await this.botService.notifyUsersInGroupByIdsConfirmation(
-  //         payload.groupId,
-  //         payload.idRegUsersForDeleteOrEdit,
-  //       );
-  //     }
-  //   } else if (payload.action === 'Unconfirm') {
-  //     res = await this.groupService.unConfirmUsersInGroup(
-  //       payload.groupId,
-  //       payload.idRegUsersForDeleteOrEdit,
-  //     );
-  //   } else if (payload.action === 'Aliance') {
-  //     res = await this.botService.sendPaymentToKrugerUsers(
-  //       payload.groupId,
-  //       payload.idRegUsersForDeleteOrEdit,
-  //       payload.payment,
-  //     );
-  //     return { success: true, message: 'Подтверждено', group: res };
-  //   }
-  //   if (res) {
-  //     await this.botService.sendOrUpdateMessage(
-  //       res._id,
-  //       res.messageIdInTelegramGroup,
-  //     );
-  //     return { success: true, message: 'Подтверждено', group: res };
-  //   }
-  //   return { success: false, message: 'Ошибка' };
-  // }
 
   @SubscribeMessage('editPaymentsMetods')
   @UseGuards(WsJwtAuthGuard)
@@ -187,6 +164,45 @@ export class AppGateway
         };
     }
     return { success: false, message: 'Ошибка' };
+  }
+
+  @SubscribeMessage('testPromoMessage')
+  @UseGuards(WsJwtAuthGuard)
+  async handleTestPromoMessage(client: SocketUserData, payload: string) {
+    if (client.data && client.data.user) {
+      await this.botService.testPromoMessage(
+        payload,
+        Number(client.data.user.userId),
+      );
+    }
+  }
+
+  @SubscribeMessage('getBunUsers')
+  @UseGuards(WsJwtAuthGuard)
+  async handleGetBunUsers(): Promise<any> {
+    const res = await this.appService.getBunUsers();
+    if (!res) {
+      return { success: false, message: 'Блок юзеры не загружены' };
+    }
+    return {
+      success: true,
+      message: 'Платежные медоты загружены',
+      users: res,
+    };
+  }
+
+  @SubscribeMessage('getUsers')
+  @UseGuards(WsJwtAuthGuard)
+  async handleGetUsers(): Promise<any> {
+    const res = await this.userService.getUsers();
+    if (!res) {
+      return { success: false, message: 'Платежные медоты не загружены' };
+    }
+    return {
+      success: true,
+      message: 'Платежные медоты загружены',
+      users: res,
+    };
   }
 
   @SubscribeMessage('getPaymentMetods')

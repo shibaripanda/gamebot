@@ -21,6 +21,7 @@ import { AdminGuardAccess } from './botGuardAndMiddleware/access-control.guard';
 import { AppGateway } from 'src/app/app.gateway';
 import { LastMessageMatchGuard } from './botGuardAndMiddleware/lastMessageMatchGuard.guard';
 import { GroupService } from 'src/group/group.service';
+import { SuperManagerAccess } from './botGuardAndMiddleware/superManagerAccess-control.guard';
 // import { GroupService } from 'src/group/group.service';
 
 export type UserTelegrafContext = NarrowedContext<
@@ -49,8 +50,32 @@ export class TelegramGateway {
   @Command('enter')
   @UseGuards(AdminGuardAccess)
   async getAuthLink(@Ctx() ctx: Context) {
+    const access = await this.appService.getStatusAccess();
+    if (!access) {
+      console.log('Доступ закрыт');
+      return;
+    }
     if (ctx && ctx.from) {
       await ctx.reply(this.appService.getAuthLink(ctx.from.id));
+    }
+  }
+
+  @Command('close')
+  @UseGuards(SuperManagerAccess)
+  async closeAccessCommand(@Ctx() ctx: Context) {
+    if (ctx.from) {
+      await this.appService.webAccessClose();
+      await this.botService.sendTextMessage(ctx.from.id, 'Веб доступ закрыт');
+      this.appGateway.closeAccess();
+    }
+  }
+
+  @Command('open')
+  @UseGuards(SuperManagerAccess)
+  async openAccess(@Ctx() ctx: Context) {
+    if (ctx.from) {
+      await this.appService.webAccessOpen();
+      await this.botService.sendTextMessage(ctx.from.id, 'Веб доступ открыт');
     }
   }
 
@@ -59,7 +84,9 @@ export class TelegramGateway {
   async closeAccess(@Ctx() ctx: Context) {
     console.log('Access close');
     if (ctx.from) {
-      await this.botService.sendTextMessage(ctx.from.id, 'Доступ закрыт');
+      await this.appService.webAccessClose();
+      await this.botService.sendTextMessage(ctx.from.id, 'Веб доступ закрыт');
+      this.appGateway.closeAccess();
     }
   }
 

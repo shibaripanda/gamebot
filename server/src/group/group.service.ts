@@ -71,7 +71,7 @@ export class GroupService {
     if (targetIndex === -1) return null;
 
     const anonName =
-      `${group.prefix}${targetIndex + 1}` + this.getRandomSmile();
+      `${group.prefix} ${targetIndex + 1}` + this.getRandomSmile();
     const fieldPath = `users.${targetIndex}`;
 
     const updateRes = await this.groupMongo.updateOne(
@@ -262,7 +262,7 @@ export class GroupService {
     if (targetIndex === -1) return null;
 
     const anonName =
-      `${group.prefix}${targetIndex + 1}` + this.getRandomSmile();
+      `${group.prefix} ${targetIndex + 1}` + this.getRandomSmile();
     const fieldPath = `users.${targetIndex}`;
 
     const updateRes = await this.groupMongo.updateOne(
