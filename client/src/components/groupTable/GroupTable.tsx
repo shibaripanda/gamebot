@@ -93,9 +93,8 @@ export function GroupTable({socket, users, editRegUsers, groupId, paymentsMetods
             <Text>
               {selection.length ? selection.length + ' user (s)' : ''}
             </Text>
-            
             <Button
-            disabled={users.length === users.filter((us) => us.recivedAlianceName).length}
+            disabled={!users.some(user => user.recivedAlianceName === false) || users.length < group.maxCountUsersInGroup}
             onClick={() => {
               setSelection([...users.map(user => user._id)]);
               setAction({action: 'Aliance', title: 'Послать название Альянса'})
@@ -104,8 +103,9 @@ export function GroupTable({socket, users, editRegUsers, groupId, paymentsMetods
             >Альянс</Button>
             <Button
             disabled={
-              !users.map(us => us.recivedAlianceName).includes(true) || 
-              users.filter(us => us.recivedRekviziti === true).length === users.filter(us => us.byByKruger === true).length
+              !users.filter(us => us.byByKruger === true).some(user => user.recivedRekviziti === false) || 
+              users.length < group.maxCountUsersInGroup ||
+              !users.some(user => user.recivedAlianceName === true)
             }
             onClick={() => {
               setSelection([...users.filter(user => user.byByKruger === true).map(user => user._id)]);

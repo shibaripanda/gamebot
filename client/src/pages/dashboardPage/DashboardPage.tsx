@@ -31,6 +31,9 @@ export function DashboardPage() {
   const [search, setSearch] = useState('');
   const [paymentsMetods, setPaymentMetods] = useState<PaymentMetod[]>([])
   const [lastTimeUpdate, setLastTimeUpdate] = useState(Date.now())
+  // const [isSocketConnected, setIsSocketConnected] = useState(false);
+  const isSocketConnectedRef = useRef(false);
+
 
   const toggleTheme = () => {
     setColorScheme(colorScheme === 'dark' ? 'light' : 'dark');
@@ -49,118 +52,245 @@ export function DashboardPage() {
       navigate('/');
       return;
     }
+
     const socket = createSocket(token);
-    socketRef.current = socket
+    socketRef.current = socket;
+
     socket.on('connect', () => {
       console.log('Connected', socket.id);
       setIsSocketConnected(true);
+      isSocketConnectedRef.current = true; // обновляем ref
     });
+
+    socket.on('disconnect', () => {
+      setIsSocketConnected(false);
+      isSocketConnectedRef.current = false;
+    });
+
     socket.on('upData', (time) => {
       console.log('upData:', time);
-      getGroups()
-      getPamentMetods()
-      setLastTimeUpdate(time)
+      console.log('isSocketConnected inside upData:', isSocketConnectedRef.current);
+      if (!isSocketConnectedRef.current) return;
+
+      getGroups();
+      getPamentMetods();
+      setLastTimeUpdate(time);
     });
+
     socket.on('closeAccess', () => {
       sessionStorage.removeItem('token');
       navigate('/');
     });
+
     socket.on('connect_error', (err) => {
       console.error('Connection error:', err.message);
-      // sessionStorage.removeItem('token'); !!!!!!!!!!!!!!!!!!!!!! только dev mode
+      // sessionStorage.removeItem('token'); // для dev режима
       // navigate('/');
     });
+
     return () => {
       socket.disconnect();
       setIsSocketConnected(false);
+      isSocketConnectedRef.current = false;
     };
   }, [navigate]);
 
   useEffect(() => {
-    getGroups()
-    getPamentMetods()
-  }, [isSocketConnected])
+    if (isSocketConnectedRef.current) {
+      getGroups();
+      getPamentMetods();
+    }
+  }, [isSocketConnected]);
+
+  const getGroups = () => {
+    if (!isSocketConnectedRef.current) return;
+    socketRef.current.emit('getGroups', {}, (response: GetGroups) => {
+      if(!response.success) return;
+      console.log(response.groups);
+      setGroups(response.groups);
+    });
+  };
+
+  const getPamentMetods = () => {
+    if (!isSocketConnectedRef.current) return;
+    socketRef.current.emit('getPaymentMetods', {}, (response: GetPaymentMetods) => {
+      if(!response.success) return;
+      setPaymentMetods(response.metods);
+    });
+  };
 
   const createNewGroup = (close: () => void) => {
     if (!socketRef.current) return;
     socketRef.current.emit('createNewGroup', newGroup, (response: ServerResponce) => {
-      if(!response.success) return
-      setNewGroup({name: '', promo: '', aliance: '', prefix: '', present: false})
-      close()
-      setGroups(ex => {return [response.group, ...ex]})
+      if(!response.success) return;
+      setNewGroup({name: '', promo: '', aliance: '', prefix: '', present: false});
+      close();
+      setGroups(ex => [response.group, ...ex]);
     });
-
-  }
+  };
 
   const deleteGroup = (groupId : string) => {
-    if (!isSocketConnected) return;
+    if (!isSocketConnectedRef.current) return;
     socketRef.current.emit('deleteGroup', groupId, (response: {success: boolean, message: string, group: string}) => {
-      if(!response.success) return
-      console.log(response)
-      setGroups(ex =>
-        ex.filter(group =>
-          group._id !== response.group
-        )
-      )
+      if(!response.success) return;
+      console.log(response);
+      setGroups(ex => ex.filter(group => group._id !== response.group));
     });
-  }
+  };
 
   const updateGroupSettings = (data: object) => {
-    if (!isSocketConnected) return;
-    console.log(data)
-     socketRef.current.emit('updateGroupSettings', data, (response: GetGroup) => {
-      if(!response.success) return
-      console.log(response.group)
-      setGroups(ex =>
-        ex.map(group =>
-          group._id === response.group._id ? response.group : group
-        )
-      )
+    if (!isSocketConnectedRef.current) return;
+    console.log(data);
+    socketRef.current.emit('updateGroupSettings', data, (response: GetGroup) => {
+      if(!response.success) return;
+      console.log(response.group);
+      setGroups(ex => ex.map(group => group._id === response.group._id ? response.group : group));
     });
-  }
-
-  const getPamentMetods = () => {
-    if (!isSocketConnected) return;
-     socketRef.current.emit('getPaymentMetods', {}, (response: GetPaymentMetods) => {
-      if(!response.success) return
-      setPaymentMetods([...response.metods])
-    });
-  }
-
-  const getGroups = () => {
-    if (!isSocketConnected) return;
-     socketRef.current.emit('getGroups', {}, (response: GetGroups) => {
-      if(!response.success) return
-      console.log(response.groups)
-      setGroups([...response.groups])
-    });
-  }
+  };
 
   const editRegUsers = (idRegUsersForDeleteOrEdit: string[], groupId: string, action: string, payment: string) => {
-    if (!isSocketConnected) return;
+    if (!isSocketConnectedRef.current) return;
     console.log(idRegUsersForDeleteOrEdit, groupId, action);
     socketRef.current.emit('editRegUsers', {idRegUsersForDeleteOrEdit, groupId, action, payment}, (response: GetGroup) => {
       console.log('editRegUsers:', response);
-      if(!response.success) return
-      console.log(response.group)
-      setGroups(ex =>
-        ex.map(group =>
-          group._id === response.group._id ? response.group : group
-        )
-      )
+      if(!response.success) return;
+      console.log(response.group);
+      setGroups(ex => ex.map(group => group._id === response.group._id ? response.group : group));
     });
-  }
+  };
 
-   const editPaymentsMetods = (action: string, name: string, data: string, idForDelete: string) => {
-    if (!isSocketConnected) return;
+  const editPaymentsMetods = (action: string, name: string, data: string, idForDelete: string) => {
+    if (!isSocketConnectedRef.current) return;
     console.log(action, name, data, idForDelete);
     socketRef.current.emit('editPaymentsMetods', {action, name, data, idForDelete}, (response: GetPaymentMetods) => {
       console.log('editPaymentsMetods:', response);
-      if(!response.success) return
-      console.log(response.metods)
-      setPaymentMetods(response.metods)
+      if(!response.success) return;
+      console.log(response.metods);
+      setPaymentMetods(response.metods);
     });
-  }
+  };
+
+  // const socketRef = useRef<any>(null);
+
+  // useEffect(() => {
+  //   const token = sessionStorage.getItem('token');
+  //   if (!token) {
+  //     navigate('/');
+  //     return;
+  //   }
+  //   const socket = createSocket(token);
+  //   socketRef.current = socket
+  //   socket.on('connect', () => {
+  //     console.log('Connected', socket.id);
+  //     setIsSocketConnected(true);
+  //   });
+  //   socket.on('upData', (time) => {
+  //     console.log('upData:', time);
+  //     console.log('isSocketConnected inside upData:', isSocketConnected);
+  //     getGroups()
+  //     getPamentMetods()
+  //     setLastTimeUpdate(time)
+  //   });
+  //   socket.on('closeAccess', () => {
+  //     sessionStorage.removeItem('token');
+  //     navigate('/');
+  //   });
+  //   socket.on('connect_error', (err) => {
+  //     console.error('Connection error:', err.message);
+  //     // sessionStorage.removeItem('token'); !!!!!!!!!!!!!!!!!!!!!! только dev mode
+  //     // navigate('/');
+  //   });
+  //   return () => {
+  //     socket.disconnect();
+  //     setIsSocketConnected(false);
+  //   };
+  // }, [navigate]);
+
+  // useEffect(() => {
+  //   getGroups()
+  //   getPamentMetods()
+  // }, [isSocketConnected])
+
+  // const createNewGroup = (close: () => void) => {
+  //   if (!socketRef.current) return;
+  //   socketRef.current.emit('createNewGroup', newGroup, (response: ServerResponce) => {
+  //     if(!response.success) return
+  //     setNewGroup({name: '', promo: '', aliance: '', prefix: '', present: false})
+  //     close()
+  //     setGroups(ex => {return [response.group, ...ex]})
+  //   });
+
+  // }
+
+  // const deleteGroup = (groupId : string) => {
+  //   if (!isSocketConnected) return;
+  //   socketRef.current.emit('deleteGroup', groupId, (response: {success: boolean, message: string, group: string}) => {
+  //     if(!response.success) return
+  //     console.log(response)
+  //     setGroups(ex =>
+  //       ex.filter(group =>
+  //         group._id !== response.group
+  //       )
+  //     )
+  //   });
+  // }
+
+  // const updateGroupSettings = (data: object) => {
+  //   if (!isSocketConnected) return;
+  //   console.log(data)
+  //    socketRef.current.emit('updateGroupSettings', data, (response: GetGroup) => {
+  //     if(!response.success) return
+  //     console.log(response.group)
+  //     setGroups(ex =>
+  //       ex.map(group =>
+  //         group._id === response.group._id ? response.group : group
+  //       )
+  //     )
+  //   });
+  // }
+
+  // const getPamentMetods = () => {
+  //   if (!isSocketConnected) return;
+  //    socketRef.current.emit('getPaymentMetods', {}, (response: GetPaymentMetods) => {
+  //     if(!response.success) return
+  //     setPaymentMetods([...response.metods])
+  //   });
+  // }
+
+  // const getGroups = () => {
+  //   if (!isSocketConnected) return;
+  //    socketRef.current.emit('getGroups', {}, (response: GetGroups) => {
+  //     if(!response.success) return
+  //     console.log(response.groups)
+  //     setGroups([...response.groups])
+  //   });
+  // }
+
+  // const editRegUsers = (idRegUsersForDeleteOrEdit: string[], groupId: string, action: string, payment: string) => {
+  //   if (!isSocketConnected) return;
+  //   console.log(idRegUsersForDeleteOrEdit, groupId, action);
+  //   socketRef.current.emit('editRegUsers', {idRegUsersForDeleteOrEdit, groupId, action, payment}, (response: GetGroup) => {
+  //     console.log('editRegUsers:', response);
+  //     if(!response.success) return
+  //     console.log(response.group)
+  //     setGroups(ex =>
+  //       ex.map(group =>
+  //         group._id === response.group._id ? response.group : group
+  //       )
+  //     )
+  //   });
+  // }
+
+  //  const editPaymentsMetods = (action: string, name: string, data: string, idForDelete: string) => {
+  //   if (!isSocketConnected) return;
+  //   console.log(action, name, data, idForDelete);
+  //   socketRef.current.emit('editPaymentsMetods', {action, name, data, idForDelete}, (response: GetPaymentMetods) => {
+  //     console.log('editPaymentsMetods:', response);
+  //     if(!response.success) return
+  //     console.log(response.metods)
+  //     setPaymentMetods(response.metods)
+  //   });
+  // }
 
   if(sessionStorage.getItem('token')){
     return (

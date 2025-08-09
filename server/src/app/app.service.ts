@@ -144,7 +144,7 @@ export class AppService implements OnModuleInit {
 
   getAuthLink(userId: number): string {
     const token = this.generateToken(String(userId));
-    return `${this.config.get<string>('WEB_URL')}/?token=${token}`;
+    return `${this.config.get<string>('WEB_URL')}/#/?token=${token}`;
   }
 
   generateToken(userId: string): string {

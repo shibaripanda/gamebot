@@ -86,6 +86,7 @@ export class GroupService {
           [`${fieldPath}.anonName`]: anonName,
           [`${fieldPath}.byByKruger`]: false,
           [`${fieldPath}.imagePromoForReg`]: user.reg_screenNoPromo,
+          [`${fieldPath}.telegramUsername`]: user.username,
         },
       },
     );

@@ -13,7 +13,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: nest_vite_app
+      args:
+        VITE_WEB_URL: http://161.35.219.218:5111
+    image: pandadoker/gamebot:v1
+    container_name: gamebot
     restart: always
     env_file:
       - ./server/.env.dev
