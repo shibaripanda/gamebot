@@ -5,20 +5,21 @@ import { Model } from 'mongoose';
 import { UserService } from 'src/user/user.service';
 // import { ConfigService } from '@nestjs/config';
 import { DataNewReg } from 'src/app/interfaces/dataNewReg';
-// import { AppGateway } from 'src/app/app.gateway';
+import { AppGateway } from 'src/app/app.gateway';
+import { AppService } from 'src/app/app.service';
 
 @Injectable()
 export class GroupService {
-  // private appGateway: AppGateway;
+  private appGateway: AppGateway;
   constructor(
     @InjectModel('Group') private groupMongo: Model<GroupDocument>,
     private userService: UserService,
-    // private readonly config: ConfigService,
+    private appService: AppService,
   ) {}
 
-  // setAppGateway(appGateway: AppGateway) {
-  //   this.appGateway = appGateway;
-  // }
+  setAppGateway(appGateway: AppGateway) {
+    this.appGateway = appGateway;
+  }
 
   async closeGroup(groupId: string) {
     return await this.groupMongo.findOneAndUpdate(
@@ -417,15 +418,18 @@ export class GroupService {
     newGroup: Pick<Group, 'name' | 'promo' | 'aliance' | 'prefix' | 'present'>,
   ) {
     console.log(newGroup);
+    const image = await this.appService.getFishImage();
     if (!newGroup.present) {
       return await this.groupMongo.create({
         ...newGroup,
         maxCountUsersInGroup: 30,
+        image: image,
       });
     }
     return await this.groupMongo.create({
       ...newGroup,
       maxCountUsersInGroup: 29,
+      image: image,
     });
   }
 }

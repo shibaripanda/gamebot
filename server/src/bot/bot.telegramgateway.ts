@@ -4,15 +4,7 @@ import {
   Update as UpdateTelegraf,
 } from '@telegraf/types';
 import { BotService } from './bot.service';
-import {
-  Action,
-  Command,
-  Ctx,
-  // Hears,
-  On,
-  Start,
-  Update,
-} from 'nestjs-telegraf';
+import { Action, Command, Ctx, On, Start, Update } from 'nestjs-telegraf';
 import { AppService } from 'src/app/app.service';
 import { UserService } from 'src/user/user.service';
 import { Context, NarrowedContext } from 'telegraf';
@@ -22,7 +14,6 @@ import { AppGateway } from 'src/app/app.gateway';
 import { LastMessageMatchGuard } from './botGuardAndMiddleware/lastMessageMatchGuard.guard';
 import { GroupService } from 'src/group/group.service';
 import { SuperManagerAccess } from './botGuardAndMiddleware/superManagerAccess-control.guard';
-// import { GroupService } from 'src/group/group.service';
 
 export type UserTelegrafContext = NarrowedContext<
   Context,
@@ -43,7 +34,11 @@ export class TelegramGateway {
     this.appGateway = appGateway;
   }
 
-  upWeb() {
+  upUsers() {
+    this.appGateway.upUsers();
+  }
+
+  upData() {
     this.appGateway.upData();
   }
 
@@ -56,7 +51,9 @@ export class TelegramGateway {
       return;
     }
     if (ctx && ctx.from) {
-      await ctx.reply(this.appService.getAuthLink(ctx.from.id));
+      await ctx.reply(this.appService.getAuthLink(ctx.from.id)).catch((e) => {
+        console.log(e);
+      });
     }
   }
 
@@ -64,9 +61,9 @@ export class TelegramGateway {
   @UseGuards(SuperManagerAccess)
   async closeAccessCommand(@Ctx() ctx: Context) {
     if (ctx.from) {
+      this.appGateway.closeAccess();
       await this.appService.webAccessClose();
       await this.botService.sendTextMessage(ctx.from.id, 'Веб доступ закрыт');
-      this.appGateway.closeAccess();
     }
   }
 
@@ -80,13 +77,13 @@ export class TelegramGateway {
   }
 
   @Action('closeAccess')
-  @UseGuards(AdminGuardAccess)
+  @UseGuards(SuperManagerAccess)
   async closeAccess(@Ctx() ctx: Context) {
     console.log('Access close');
     if (ctx.from) {
+      this.appGateway.closeAccess();
       await this.appService.webAccessClose();
       await this.botService.sendTextMessage(ctx.from.id, 'Веб доступ закрыт');
-      this.appGateway.closeAccess();
     }
   }
 
@@ -224,7 +221,7 @@ export class TelegramGateway {
     console.log('@Action succssesRegistrtion');
     await this.botService.confirmUserInGroup(ctx.from.id);
     await ctx.answerCbQuery();
-    this.upWeb();
+    this.upData();
   }
 
   @Start()
@@ -232,7 +229,7 @@ export class TelegramGateway {
     console.log('@Start');
     await this.userService.createUserOrUpdateUser(ctx.from);
     await this.botService.startMessage(ctx.from.id);
-    this.upWeb();
+    this.upUsers();
   }
 
   @On('photo')
@@ -244,12 +241,21 @@ export class TelegramGateway {
       const highestQualityPhoto = photos[photos.length - 1];
       const fileId = highestQualityPhoto.file_id;
       if (message.caption) {
+        if (message.caption === 'fish') {
+          await this.appService.updateFishImage(fileId);
+          await ctx.reply('Готово').catch((e) => {
+            console.log(e);
+          });
+          return;
+        }
         const groups = await this.groupService.getGroups();
         if (groups) {
           const res = groups.find((gr) => gr.name === message.caption);
           if (res) {
             await this.groupService.updateGroupImage(res._id, fileId);
-            await ctx.reply('Готово');
+            await ctx.reply('Готово').catch((e) => {
+              console.log(e);
+            });
             return;
           }
         }
@@ -327,6 +333,7 @@ export class TelegramGateway {
           message.text.slice(0, 100),
         );
         await this.botService.confirmationPresent(ctx.from.id);
+        this.upData();
         return;
       }
       if (user.next_step_data === 'reg_email') {
@@ -336,7 +343,11 @@ export class TelegramGateway {
           typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
         if (!isValidEmail) {
-          await ctx.reply('⚠️ Попробуй еще раз, некоретный email');
+          await ctx
+            .reply('⚠️ Попробуй еще раз, некоретный email')
+            .catch((e) => {
+              console.log(e);
+            });
           return false;
         }
       }
@@ -368,5 +379,6 @@ export class TelegramGateway {
       }
     }
     console.log(await this.userService.getUser(ctx.from.id));
+    this.upData();
   }
 }

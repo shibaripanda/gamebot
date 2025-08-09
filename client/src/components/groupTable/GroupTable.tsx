@@ -9,6 +9,7 @@ import { PaymentMetod } from '../../pages/dashboardPage/interfaces/paymentMedod'
 import { Group } from '../../pages/dashboardPage/interfaces/group';
 import { SettingsModal } from '../settingsModal/SettingsModal';
 import { Socket } from 'socket.io-client';
+import { UsersModal } from '../usersModal/UsersModal';
 
 interface UserProps {
   users: RegUser[];
@@ -92,24 +93,7 @@ export function GroupTable({socket, users, editRegUsers, groupId, paymentsMetods
             <Text>
               {selection.length ? selection.length + ' user (s)' : ''}
             </Text>
-            <Button
-            color='red'
-            disabled={!selection.length}
-            onClick={() => {
-              setAction({action: 'Bun', title: 'Ограничить доступ пользователя к боту'})
-              topConfirmModal.open()
-            }}
-            >
-            Бан</Button>
-            <Button
-            color='red'
-            disabled={!selection.length}
-            onClick={() => {
-              setAction({action: 'Delete', title: 'Удалить запись пользователя на акцию'})
-              topConfirmModal.open()
-            }}
-            >
-            Удалить</Button>
+            
             <Button
             disabled={users.length === users.filter((us) => us.recivedAlianceName).length}
             onClick={() => {
@@ -147,6 +131,22 @@ export function GroupTable({socket, users, editRegUsers, groupId, paymentsMetods
             }}
             >
             Отмена</Button>
+            <Button
+            color='red'
+            disabled={!selection.length}
+            onClick={() => {
+              setAction({action: 'Delete', title: 'Удалить запись пользователя на акцию'})
+              topConfirmModal.open()
+            }}
+            >
+            Удалить</Button>
+            <UsersModal
+            butColor='red'
+            butDisabled={!selection.length} 
+            socket={socket}
+            title={'Блок'}
+            filter={users.filter(us => selection.includes(us._id)).map(us => us.telegramId)}
+            />
           </MantineGroup>
         </MantineGroup>
         <Space h='xl'/>

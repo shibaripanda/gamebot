@@ -14,4 +14,5 @@ export interface UserApp {
     lastMessage: number;
     createdAt: Date;
     updatedAt: Date;
+    activity: number;
 }

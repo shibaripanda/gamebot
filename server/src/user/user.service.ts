@@ -22,6 +22,19 @@ export class UserService implements OnModuleInit {
     console.log(this.admins); // [599773731, 123456789]
   }
 
+  async upActivity(telegramId) {
+    await this.userMongo.updateOne(
+      { id: telegramId },
+      { $inc: { activity: 1 } },
+    );
+  }
+
+  async getUserTelegramIds(): Promise<number[]> {
+    const res = await this.userMongo.find({}, { _id: 0, id: 1 }).lean();
+
+    return res.map((us) => Number(us.id)).filter((id) => !isNaN(id));
+  }
+
   async getUsers() {
     const res = await this.userMongo.find();
     if (res) {
@@ -103,7 +116,7 @@ export class UserService implements OnModuleInit {
   }
 
   async createUserOrUpdateUser(
-    user: Omit<User, 'gameName' | 'blackList' | 'lastMessage'>,
+    user: Omit<User, 'gameName' | 'blackList' | 'lastMessage' | 'activity'>,
   ) {
     const userRes = await this.userMongo.updateOne({ id: user.id }, user, {
       upsert: true,

@@ -1,0 +1,26 @@
+
+services:
+  mongo:
+    image: mongo:6
+    container_name: mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nest_vite_app
+    restart: always
+    env_file:
+      - ./server/.env.dev
+    ports:
+      - "5111:5111"
+    depends_on:
+      - mongo
+
+volumes:
+  mongo_data:

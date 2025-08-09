@@ -28,23 +28,42 @@ export class AppService implements OnModuleInit {
     this.appGateway = appGateway;
   }
 
+  async getFishImage() {
+    const res = await this.appMongo.findOne(
+      { app: 'app' },
+      { _id: 0, fishImage: 1 },
+    );
+    if (res) return res.fishImage;
+    return '';
+  }
+
+  async updateFishImage(file_id: string) {
+    await this.appMongo.updateOne({ app: 'app' }, { fishImage: file_id });
+  }
+
   async unBunUsers(userIds: string[]) {
     const usersTelegramIds =
       await this.userService.getUsersTelegramIds(userIds);
 
-    await this.appMongo.updateOne(
+    const res = await this.appMongo.findOneAndUpdate(
       { app: 'app' },
-      { $pull: { bunUsers: { $in: usersTelegramIds } } }, // $in вместо $each
+      { $pull: { bunUsers: { $in: usersTelegramIds } } },
+      { new: true }, // $in вместо $each
     );
+    if (res) return res.bunUsers;
   }
 
   async bunUsers(userIds: string[]) {
     const usersTelegramIds =
       await this.userService.getUsersTelegramIds(userIds);
-    await this.appMongo.updateOne(
+    console.log(userIds, usersTelegramIds);
+    const res = await this.appMongo.findOneAndUpdate(
       { app: 'app' },
       { $addToSet: { bunUsers: { $each: usersTelegramIds } } },
+      { new: true },
     );
+    if (res) return res.bunUsers;
+    return [];
   }
 
   async onModuleInit() {
@@ -60,6 +79,7 @@ export class AppService implements OnModuleInit {
       { app: 'app' },
       { _id: 0, bunUsers: 1 },
     );
+    console.log(res);
     if (res) return res.bunUsers;
   }
 
@@ -128,9 +148,17 @@ export class AppService implements OnModuleInit {
   }
 
   generateToken(userId: string): string {
+    const now = Date.now();
+    for (const [token, data] of this.tokens.entries()) {
+      if (data.expiresAt <= now) {
+        this.tokens.delete(token);
+      }
+    }
+
     const token: string = uuidv4();
-    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 минут
+    const expiresAt = now + 10 * 60 * 1000; // 10 минут
     this.tokens.set(token, { userId, used: false, expiresAt });
+
     console.log(this.tokens);
     return token;
   }
@@ -143,6 +171,8 @@ export class AppService implements OnModuleInit {
 
     data.used = true;
     this.tokens.set(token, data);
+    this.tokens.delete(token);
+    console.log(this.tokens);
     return {
       token: await this.jwt.signAsync({ userId: data.userId }),
       userId: data.userId,

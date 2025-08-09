@@ -62,6 +62,11 @@ export const UserSchema = new mongoose.Schema(
       require: true,
       default: 0,
     },
+    activity: {
+      type: Number,
+      require: true,
+      default: 0,
+    },
   },
   { timestamps: true },
 );
@@ -79,6 +84,7 @@ export interface User {
   reg_screenNoPromo?: string;
   next_step_data?: string;
   lastMessage: number;
+  activity: number;
 }
 
 export type UserDocument = User & mongoose.Document;

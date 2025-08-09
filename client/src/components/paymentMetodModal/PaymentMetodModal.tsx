@@ -20,6 +20,7 @@ export function PaymentMetodModal({ paymentsMetods, editPaymentsMetods }: Paymen
             <Group justify='space-between'>
               <Text fw={700}>{met.paymentName}</Text>
               <Button
+              size='xs'
               color='red'
               onClick={() => {
               editPaymentsMetods('Delete', met.paymentName, met.paymentData, '');

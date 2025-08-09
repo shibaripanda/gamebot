@@ -35,6 +35,11 @@ export const AppSchema = new mongoose.Schema(
       require: true,
       default: [],
     },
+    fishImage: {
+      type: String,
+      require: true,
+      default: '',
+    },
   },
   { timestamps: true },
 );
@@ -49,6 +54,7 @@ export interface App {
   paymentMetods: [PaymentMetod];
   webAccess: boolean;
   bunUsers: number[];
+  fishImage: string;
 }
 
 export type PaymentMetodDocument = PaymentMetod & mongoose.Document;

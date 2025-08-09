@@ -34,6 +34,128 @@ export class BotService {
     }
   }
 
+  async adsPromoMessage(groupId: string) {
+    const group = await this.groupService.getGroup(groupId);
+    const listReceivers = await this.userService.getUserTelegramIds();
+    const bunUsers = await this.appService.getBunUsers();
+
+    if (!group || !listReceivers.length) {
+      console.error('Group not found or no receivers');
+      return false;
+    }
+
+    const list = listReceivers.filter((us) => !bunUsers?.includes(us));
+
+    const buttons = [
+      [
+        {
+          text: `${group.promo}`,
+          callback_data: 'reservPlaceInGroup:' + group._id,
+        },
+      ],
+      [{ text: `В начало`, callback_data: 'mainMenu' }],
+    ];
+
+    for (let i = 0; i < list.length; i++) {
+      const userId = list[i];
+      try {
+        if (!group.image) {
+          await this.bot.telegram
+            .sendMessage(userId, group.promoText, {
+              parse_mode: 'HTML',
+              reply_markup: { inline_keyboard: buttons },
+            })
+            .then(async (res: Message) => {
+              await this.updateLastMessageAndEditOldMessage(
+                userId,
+                res.message_id,
+              );
+            })
+            .catch((e) => {
+              console.log(e);
+            });
+        } else {
+          await this.bot.telegram
+            .sendPhoto(userId, group.image, {
+              caption: group.promoText,
+              parse_mode: 'HTML',
+              reply_markup: { inline_keyboard: buttons },
+            })
+            .then(async (res: Message) => {
+              await this.updateLastMessageAndEditOldMessage(
+                userId,
+                res.message_id,
+              );
+            })
+            .catch((e) => {
+              console.log(e);
+            });
+        }
+      } catch (err) {
+        console.error(`Ошибка отправки пользователю ${userId}:`, err);
+      }
+
+      // Задержка перед следующим отправлением
+      await new Promise((resolve) => setTimeout(resolve, 50)); // 50 мс
+    }
+
+    console.log(`Рассылка завершена: ${list.length} пользователей`);
+  }
+
+  // async adsPromoMessage(groupId: string, userId: number) {
+  //   const group = await this.groupService.getGroup(groupId);
+  //   const listRecivers = await this.userService.getUserTelegramIds();
+  //   if (!group || !listRecivers.length) {
+  //     console.error('Group not found');
+  //     return false;
+  //   }
+
+  //   const buttons = [
+  //     [
+  //       {
+  //         text: `${group.promo}`,
+  //         callback_data: 'reservPlaceInGroup:' + group._id,
+  //       },
+  //     ],
+  //     [
+  //       {
+  //         text: `В начало`,
+  //         callback_data: 'mainMenu',
+  //       },
+  //     ],
+  //   ];
+  //   if (!group.image) {
+  //     await this.bot.telegram
+  //       .sendMessage(userId, group.promoText, {
+  //         parse_mode: 'HTML',
+  //         reply_markup: {
+  //           inline_keyboard: buttons,
+  //         },
+  //       })
+  //       .then(async (res: Message) => {
+  //         await this.updateLastMessageAndEditOldMessage(userId, res.message_id);
+  //       })
+  //       .catch((e) => {
+  //         console.log(e);
+  //       });
+  //   } else {
+  //     await this.bot.telegram
+  //       .sendPhoto(userId, group.image, {
+  //         caption: group.promoText,
+  //         parse_mode: 'HTML',
+  //         reply_markup: {
+  //           inline_keyboard: buttons,
+  //         },
+  //       })
+  //       .then(async (res: Message) => {
+  //         await this.updateLastMessageAndEditOldMessage(userId, res.message_id);
+  //       })
+  //       .catch((e) => {
+  //         console.log(e);
+  //       });
+  //   }
+  // }
+
   async testPromoMessage(groupId: string, userId: number) {
     const group = await this.groupService.getGroup(groupId);
     if (!group) {
@@ -45,6 +167,12 @@ export class BotService {
         {
           text: `${group.promo}`,
           callback_data: 'reservPlaceInGroup:' + group._id,
+        },
+      ],
+      [
+        {
+          text: `В начало`,
+          callback_data: 'mainMenu',
         },
       ],
     ];
@@ -246,11 +374,13 @@ export class BotService {
       }
     }
 
-    await this.bot.telegram.sendMessage(
-      Number(this.config.get<number>('MANAGER')!),
-      text,
-      { parse_mode: 'HTML' },
-    );
+    await this.bot.telegram
+      .sendMessage(Number(this.config.get<number>('MANAGER')!), text, {
+        parse_mode: 'HTML',
+      })
+      .catch((e) => {
+        console.log(e);
+      });
   }
 
   async sendPaymentToKrugerUsers(
@@ -972,13 +1102,13 @@ export class BotService {
       `📧 <code>${res.email}</code>`,
       `🔒 <code>${res.password}</code>`,
     ].join('\n');
-    await this.bot.telegram.sendMessage(
-      this.config.get<number>('GROUP_TELEGRAM_CLOSE')!,
-      message,
-      {
+    await this.bot.telegram
+      .sendMessage(this.config.get<number>('GROUP_TELEGRAM_CLOSE')!, message, {
         parse_mode: 'HTML',
-      },
-    );
+      })
+      .catch((e) => {
+        console.log(e);
+      });
     await this.sendOrUpdateMessage(res.groupId, res.messageIdInTelegramGroup);
   }
 
@@ -1016,12 +1146,15 @@ export class BotService {
   }
 
   async sendMessageToGroup(list: string, groupId: string) {
-    const message = await this.bot.telegram.sendMessage(
-      this.config.get<number>('GROUP_TELEGRAM_OPEN')!,
-      list,
-      { parse_mode: 'HTML' },
-    );
-    await this.groupService.updateMessageIdGroup(groupId, message.message_id);
+    const message = await this.bot.telegram
+      .sendMessage(this.config.get<number>('GROUP_TELEGRAM_OPEN')!, list, {
+        parse_mode: 'HTML',
+      })
+      .catch((e) => {
+        console.log(e);
+      });
+    if (message)
+      await this.groupService.updateMessageIdGroup(groupId, message.message_id);
     return;
   }
 

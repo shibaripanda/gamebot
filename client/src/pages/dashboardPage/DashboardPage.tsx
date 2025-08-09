@@ -1,4 +1,4 @@
-import { Button, Center, Group as MantineGroup, TextInput, useMantineColorScheme } from "@mantine/core";
+import { Button, Center, Group as MantineGroup, Text, TextInput, useMantineColorScheme } from "@mantine/core";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createSocket } from "../../utils/socket";
@@ -14,6 +14,14 @@ import { PaymentMetod } from "./interfaces/paymentMedod";
 import { GetPaymentMetods } from "./interfaces/getPaymentMetods";
 import { UsersModal } from "../../components/usersModal/UsersModal";
 
+function formatUpdatedTime(timestamp: number): string {
+  const date = new Date(timestamp);
+  const h = date.getHours().toString().padStart(2, '0');
+  const m = date.getMinutes().toString().padStart(2, '0');
+  return `${h}:${m}`;
+}
+
+
 export function DashboardPage() {
   const navigate = useNavigate();
   const { colorScheme, setColorScheme } = useMantineColorScheme();
@@ -22,6 +30,7 @@ export function DashboardPage() {
   const [groups, setGroups] = useState<Group[]>([])
   const [search, setSearch] = useState('');
   const [paymentsMetods, setPaymentMetods] = useState<PaymentMetod[]>([])
+  const [lastTimeUpdate, setLastTimeUpdate] = useState(Date.now())
 
   const toggleTheme = () => {
     setColorScheme(colorScheme === 'dark' ? 'light' : 'dark');
@@ -46,14 +55,15 @@ export function DashboardPage() {
       console.log('Connected', socket.id);
       setIsSocketConnected(true);
     });
-    socket.on('upData', (group) => {
-      console.log('updateGroup:', group);
+    socket.on('upData', (time) => {
+      console.log('upData:', time);
       getGroups()
       getPamentMetods()
+      setLastTimeUpdate(time)
     });
     socket.on('closeAccess', () => {
-      // sessionStorage.removeItem('token');!!!!!!!!!!!!!!!!!!!!!! только dev mode
-      // navigate('/');
+      sessionStorage.removeItem('token');
+      navigate('/');
     });
     socket.on('connect_error', (err) => {
       console.error('Connection error:', err.message);
@@ -67,7 +77,6 @@ export function DashboardPage() {
   }, [navigate]);
 
   useEffect(() => {
-    console.log('useEffect getGroups')
     getGroups()
     getPamentMetods()
   }, [isSocketConnected])
@@ -96,14 +105,6 @@ export function DashboardPage() {
     });
   }
 
-  // const socketGetUpdates = (group: Group) => {
-  //   setGroups(ex =>
-  //     ex.map(gr =>
-  //       gr._id === group._id ? group : gr
-  //     )
-  //   )
-  // }
-
   const updateGroupSettings = (data: object) => {
     if (!isSocketConnected) return;
     console.log(data)
@@ -122,7 +123,7 @@ export function DashboardPage() {
     if (!isSocketConnected) return;
      socketRef.current.emit('getPaymentMetods', {}, (response: GetPaymentMetods) => {
       if(!response.success) return
-      setPaymentMetods(response.metods)
+      setPaymentMetods([...response.metods])
     });
   }
 
@@ -130,7 +131,8 @@ export function DashboardPage() {
     if (!isSocketConnected) return;
      socketRef.current.emit('getGroups', {}, (response: GetGroups) => {
       if(!response.success) return
-      setGroups(response.groups)
+      console.log(response.groups)
+      setGroups([...response.groups])
     });
   }
 
@@ -165,6 +167,7 @@ export function DashboardPage() {
       <>
       <Center style={{ margin: '10px' }}>
         <MantineGroup justify="center" gap="xs">
+          <Text>{formatUpdatedTime(lastTimeUpdate)}</Text>
           <Button onClick={() => {
             sessionStorage.removeItem('token')
             navigate('/')
@@ -178,6 +181,10 @@ export function DashboardPage() {
           <PaymentMetodModal paymentsMetods={paymentsMetods} editPaymentsMetods={editPaymentsMetods}/>
           <UsersModal 
           socket={socketRef.current}
+          title={'Люди'}
+          filter={[]}
+          butColor='red'
+          butDisabled={false}
           />
           <TextInput
             placeholder="Поиск..."

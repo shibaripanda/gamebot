@@ -1,4 +1,4 @@
-import { forwardRef, Module } from '@nestjs/common';
+import { forwardRef, Global, Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -11,6 +11,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { SocketAuthMiddleware } from './auth-guards/socket-auth.middleware';
 import { GroupModule } from 'src/group/group.module';
 
+@Global()
 @Module({
   imports: [
     ConfigModule.forRoot({

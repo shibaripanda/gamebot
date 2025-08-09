@@ -60,12 +60,11 @@ export class AppGateway
 
   handleConnection(client: Socket) {
     this.logger.log(`Client connected: ${client.id}`);
+  }
 
-    // client.onAny((event, ...args) => {
-    //   this.logger.debug(
-    //     `onAny -> [${event}] from ${client.id}: ${JSON.stringify(args)}`,
-    //   );
-    // });
+  upUsers() {
+    console.log('upUsers');
+    this.server.emit('upUsers', Date.now());
   }
 
   upData() {
@@ -80,6 +79,36 @@ export class AppGateway
 
   handleDisconnect(client: Socket) {
     this.logger.log(`Client disconnected: ${client.id}`);
+  }
+
+  @SubscribeMessage('pullBunUsers')
+  @UseGuards(WsJwtAuthGuard)
+  async handlePullBunUsers(client: Socket, payload: string[]): Promise<any> {
+    const res = await this.appService.unBunUsers(payload);
+    if (!res) {
+      return { success: false, message: 'Юзеры не разблокированы' };
+    }
+    client.broadcast.emit('upUsers', Date.now());
+    return {
+      success: true,
+      message: 'Юзеры разблокированы',
+      users: res,
+    };
+  }
+
+  @SubscribeMessage('pushBunUsers')
+  @UseGuards(WsJwtAuthGuard)
+  async handlePushBunUsers(client: Socket, payload: string[]): Promise<any> {
+    const res = await this.appService.bunUsers(payload);
+    if (!res) {
+      return { success: false, message: 'Юзеры не заблокированы' };
+    }
+    client.broadcast.emit('upUsers', Date.now());
+    return {
+      success: true,
+      message: 'Юзеры заблокированы',
+      users: res,
+    };
   }
 
   @SubscribeMessage('editRegUsers')
@@ -115,24 +144,22 @@ export class AppGateway
       );
     } else if (payload.action === 'Aliance') {
       res = await this.botService.sendAlianceNameToGroupUsers(payload.groupId);
+      client.broadcast.emit('upData', Date.now());
       return { success: true, message: 'Подтверждено', group: res };
     } else if (payload.action === 'Rekviziti') {
       res = await this.botService.sendRekvizitiToGroupUsers(payload.groupId);
+      client.broadcast.emit('upData', Date.now());
       return { success: true, message: 'Подтверждено', group: res };
-    } else if (payload.action === 'Bun') {
-      res = await this.groupService.deleteUsersInGroupAndSetNull(
-        payload.groupId,
-        payload.idRegUsersForDeleteOrEdit,
-      );
-      await this.appService.bunUsers(payload.idRegUsersForDeleteOrEdit);
     }
     if (res) {
       await this.botService.sendOrUpdateMessage(
         res._id,
         res.messageIdInTelegramGroup,
       );
+      client.broadcast.emit('upData', Date.now());
       return { success: true, message: 'Подтверждено', group: res };
     }
+    client.broadcast.emit('upData', Date.now());
     return { success: false, message: 'Ошибка' };
   }
 
@@ -144,26 +171,38 @@ export class AppGateway
         paymentName: payload.name,
         paymentData: payload.data,
       });
-      if (res)
+      if (res) {
+        client.broadcast.emit('upData', Date.now());
         return {
           success: true,
           message: 'Платежные медоты загружены',
           metods: res,
         };
+      }
     }
     if (payload.action === 'Delete') {
       const res = await this.appService.deletePaymentMetod({
         paymentName: payload.name,
         paymentData: payload.data,
       });
-      if (res)
+      if (res) {
+        client.broadcast.emit('upData', Date.now());
         return {
           success: true,
           message: 'Платежные медоты загружены',
           metods: res,
         };
+      }
     }
     return { success: false, message: 'Ошибка' };
+  }
+
+  @SubscribeMessage('adsPromoMessage')
+  @UseGuards(WsJwtAuthGuard)
+  async handleAdsPromoMessage(client: SocketUserData, payload: string) {
+    if (client.data && client.data.user) {
+      await this.botService.adsPromoMessage(payload);
+    }
   }
 
   @SubscribeMessage('testPromoMessage')
@@ -234,6 +273,7 @@ export class AppGateway
   async handleDeleteGroup(client: Socket, payload: string): Promise<any> {
     const res = await this.groupService.deleteGroup(payload);
     if (!res) return { success: false, message: 'Ошибка' };
+    client.broadcast.emit('upData', Date.now());
     return { success: true, message: 'ОК', group: res._id };
   }
 
@@ -257,6 +297,7 @@ export class AppGateway
       payload.data,
     );
     if (!res) return { success: false, message: 'Группа не обновлена' };
+    client.broadcast.emit('upData', Date.now());
     return { success: true, message: 'Группа обновлена', group: res };
   }
 
@@ -266,10 +307,9 @@ export class AppGateway
     client: Socket,
     payload: Pick<Group, 'name' | 'promo' | 'aliance' | 'prefix' | 'present'>,
   ): Promise<any> {
-    console.log(payload);
-    this.logger.log(`Создание группы: ${JSON.stringify(payload)}`);
     const res = await this.groupService.createGroup(payload);
     if (!res) return { success: false, message: 'Группа не создана' };
+    client.broadcast.emit('upData', Date.now());
     return { success: true, message: 'Группа создана', group: res };
   }
 }

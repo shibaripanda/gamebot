@@ -8,9 +8,13 @@ import { UserApp } from '../../pages/dashboardPage/interfaces/userApp';
 
 interface SettingsModalProps {
   socket: Socket;
+  title: string;
+  filter: number[];
+  butColor: string;
+  butDisabled: boolean;
 }
 
-export function UsersModal({ socket }: SettingsModalProps) {
+export function UsersModal({ socket, title, filter, butColor, butDisabled}: SettingsModalProps) {
   const [selection, setSelection] = useState<string[]>([]);
   const [opened, { open, close }] = useDisclosure(false);
   const [users, setUsers] = useState<UserApp[]>([]);
@@ -43,29 +47,45 @@ export function UsersModal({ socket }: SettingsModalProps) {
   const toggleAll = () =>
     setSelection((current) => (current.length === users.length ? [] : users.map((item) => item._id)));
 
-  const getUsers = () => {
+  const getUsers = async () => {
     socket.emit('getUsers', {}, (response: { success: boolean; message: string; users: UserApp[] }) => {
         if (!response.success) return;
-        setUsers(response.users.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()));
+        console.log(response.users)
+        setUsers([...response.users.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())]);
+        if(filter.length) setSelection(response.users.filter(us => filter.includes(us.id)).map(us => us._id));
       });
   }
 
-  const getBunUsers = () => {
+  const getBunUsers = async () => {
     socket.emit('getBunUsers', {}, (response: { success: boolean; message: string; users: number[] }) => {
         if (!response.success) return;
-        setBunUsers(response.users);
+        setBunUsers([...response.users]);
       });
   }
 
-  const makeBunUsers = () => {
-    socket.emit('bunUsers', selection, (response: { success: boolean; message: string; users: number[] }) => {
+  const pushBunUsers = () => {
+    socket.emit('pushBunUsers', selection, (response: { success: boolean; message: string; users: number[] }) => {
       if (!response.success) return;
       setBunUsers(response.users);
+      setSelection([])
+    });
+  }
+
+  const pullBunUsers = () => {
+    socket.emit('pullBunUsers', selection, (response: { success: boolean; message: string; users: number[] }) => {
+      if (!response.success) return;
+      setBunUsers(response.users);
+      setSelection([])
     });
   }
 
   useEffect(() => {
     if (opened) {
+      socket.on('upUsers', (time) => {
+      console.log('upUsers:', time);
+      getUsers()
+      getBunUsers()
+    });
       getUsers()
       getBunUsers()
     }
@@ -80,6 +100,7 @@ export function UsersModal({ socket }: SettingsModalProps) {
         </Table.Td>
         <Table.Td>{bunUsers.includes(item.id) ? '🔴' : '🟢'}</Table.Td>
         <Table.Td>{item.username ? `@${item.username}` : '---'}</Table.Td>
+        <Table.Td>{item.activity}</Table.Td>
         <Table.Td>{item.first_name}</Table.Td>
         <Table.Td>{item.id}</Table.Td>
         <Table.Td>{formatDateOrTime(item.updatedAt)}</Table.Td>
@@ -96,16 +117,26 @@ export function UsersModal({ socket }: SettingsModalProps) {
           <TextInput
           placeholder="Поиск..."
           value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          // mb="md"
+          onChange={(event) => {
+            setSearch(event.target.value)
+            if (selection.length) setSelection([])
+          }}
         />
+        <Button
+        onClick={() => {
+          getUsers()
+          getBunUsers()
+        }}
+        >Обновить</Button>
         <Button 
         color='red'
         disabled={selection.length === 0}
+        onClick={pushBunUsers}
         >Заблокировать {selection.length > 0 ? selection.length : ''}</Button>
         <Button
         color='green'
         disabled={selection.length === 0}
+        onClick={pullBunUsers}
         >Разблокировать {selection.length > 0 ? selection.length : ''}</Button>
 
         </Group>
@@ -124,6 +155,7 @@ export function UsersModal({ socket }: SettingsModalProps) {
                        </Table.Th>
                        <Table.Th>Status</Table.Th>
                        <Table.Th>@username</Table.Th>
+                       <Table.Th>Активность</Table.Th>
                        <Table.Th>Имя</Table.Th>
                        <Table.Th>id</Table.Th>
                        <Table.Th>Обновление</Table.Th>
@@ -135,10 +167,12 @@ export function UsersModal({ socket }: SettingsModalProps) {
                </Table>
            </ScrollArea>
       </Modal>
-      <Button 
+      <Button
+      color={butColor}
+      disabled={butDisabled}  
       variant="default" 
       onClick={open}>
-        Люди
+        {title}
       </Button>
     </>
   );

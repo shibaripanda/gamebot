@@ -20,6 +20,7 @@ export function SettingsModal({ socket, settingsmModal, settingsmModalUse, group
   const [onOff, setOnOff] = useState(group.hidden);
   const [promoImage, setPromoImage] = useState<string | false>(false)
   const [promoText, setPromoText] = useState<string>(group.promoText)
+  const [startAdd, setStartAdd] = useState<string>('')
 
   useEffect(() => {
     if (settingsmModal)
@@ -31,6 +32,10 @@ export function SettingsModal({ socket, settingsmModal, settingsmModalUse, group
 
   const testPromoMessage = () => {
     socket.emit('testPromoMessage', group._id);
+  }
+
+  const adsPromoMessage = () => {
+    socket.emit('adsPromoMessage', group._id);
   }
 
   const slider = () => {
@@ -104,11 +109,27 @@ export function SettingsModal({ socket, settingsmModal, settingsmModalUse, group
           }}
           />
           <Space h='xs'/>
-          <Button 
-          variant={'default'} 
-          size='xs'
-          onClick={testPromoMessage}
-          >Тест</Button>
+          <MantineGroup justify="space-between">
+            <Button 
+            variant={'default'} 
+            size='xs'
+            onClick={testPromoMessage}
+            >Тест</Button>
+            <TextInput
+            value={startAdd}
+            onChange={(v) => setStartAdd(v.target.value)}
+            size='xs'
+            />
+            <Button
+            disabled={group.name !== startAdd || group.hidden } 
+            color='red'
+            size='xs'
+            onClick={() => {
+              adsPromoMessage()
+              setStartAdd('')
+            }}
+            >Рассылка</Button>
+          </MantineGroup>
         </Paper>
         <Space h='xl'/>
 
