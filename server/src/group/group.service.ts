@@ -17,6 +17,46 @@ export class GroupService {
     private appService: AppService,
   ) {}
 
+  async getTelegramIdsForPresentPromo(): Promise<number[]> {
+    // Определяем границы сегодняшнего дня
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const start = startOfDay.getTime();
+
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+    const end = endOfDay.getTime();
+
+    // Находим все группы
+    const groups = await this.groupMongo
+      .find({
+        'users.date': { $gte: start, $lte: end },
+        'users.status': true,
+        'users.confirmation': true,
+      })
+      .lean();
+
+    // Собираем telegramId вручную
+    const telegramIds = new Set<number>();
+
+    for (const group of groups) {
+      for (const user of group.users) {
+        if (
+          user &&
+          user.date >= start &&
+          user.date <= end &&
+          user.byByKruger &&
+          user.status &&
+          user.confirmation
+        ) {
+          telegramIds.add(user.telegramId);
+        }
+      }
+    }
+
+    return [...telegramIds];
+  }
+
   setAppGateway(appGateway: AppGateway) {
     this.appGateway = appGateway;
   }
@@ -197,9 +237,7 @@ export class GroupService {
   async addUserToGroup(groupId: string, userId: number): Promise<boolean> {
     // Очистка просроченных пользователей
     const users: (UserInGroup | null)[] = await this.clearExpiredUsers(groupId);
-    console.log(users);
     if (!users.length) return false;
-    console.log('step');
     // Проверка: есть ли уже такой пользователь с незавершённой регистрацией
     const existingIndex = users.findIndex(
       (u) => u?.telegramId === userId && u.status === false,
@@ -220,7 +258,6 @@ export class GroupService {
     // Поиск первой свободной ячейки
     const emptyIndex = users.findIndex((u) => u === null);
     if (emptyIndex === -1) return false;
-    console.log('step2');
     const newUser: Pick<UserInGroup, 'telegramId' | 'status' | 'date'> = {
       telegramId: userId,
       status: false,
@@ -346,6 +383,14 @@ export class GroupService {
     return cleanedGroups;
   }
 
+  async getGroupEmail(id: string, email: string): Promise<boolean> {
+    const groupWithEmail = await this.groupMongo.findOne({
+      _id: id,
+      'users.email': email,
+    });
+    return !groupWithEmail;
+  }
+
   async getGroup(id: string): Promise<GroupDocument | null> {
     const group = await this.groupMongo.findOne({ _id: id });
     if (!group) return null;
@@ -418,7 +463,6 @@ export class GroupService {
   async createGroup(
     newGroup: Pick<Group, 'name' | 'promo' | 'aliance' | 'prefix' | 'present'>,
   ) {
-    console.log(newGroup);
     const image = await this.appService.getFishImage();
     if (!newGroup.present) {
       return await this.groupMongo.create({

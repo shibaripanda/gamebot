@@ -14,6 +14,7 @@ import { AppGateway } from 'src/app/app.gateway';
 import { LastMessageMatchGuard } from './botGuardAndMiddleware/lastMessageMatchGuard.guard';
 import { GroupService } from 'src/group/group.service';
 import { SuperManagerAccess } from './botGuardAndMiddleware/superManagerAccess-control.guard';
+import { BackupService } from './backup.service';
 
 export type UserTelegrafContext = NarrowedContext<
   Context,
@@ -28,6 +29,7 @@ export class TelegramGateway {
     private appService: AppService,
     private userService: UserService,
     private groupService: GroupService,
+    private backupService: BackupService,
   ) {}
 
   setAppGateway(appGateway: AppGateway) {
@@ -64,6 +66,15 @@ export class TelegramGateway {
       this.appGateway.closeAccess();
       await this.appService.webAccessClose();
       await this.botService.sendTextMessage(ctx.from.id, 'Веб доступ закрыт');
+    }
+  }
+
+  @Command('db')
+  @UseGuards(SuperManagerAccess)
+  async dbBuckup(@Ctx() ctx: Context) {
+    if (ctx.from) {
+      await this.botService.sendTextMessage(ctx.from.id, 'Создаем бэкап...');
+      await this.backupService.dailyBackup();
     }
   }
 
@@ -280,8 +291,16 @@ export class TelegramGateway {
         console.log('ask');
         await this.botService.askGameName(ctx.from.id);
       }
+      return;
     }
-    console.log(await this.userService.getUser(ctx.from.id));
+    if ('photo' in message && user) {
+      const photos = message.photo;
+      const highestQualityPhoto = photos[photos.length - 1];
+      const fileId = highestQualityPhoto.file_id;
+      console.log('pay');
+      await this.botService.sendFileByFileIdPaymentProof(user, fileId);
+      await this.botService.startMessage(ctx.from.id);
+    }
   }
 
   @On('document')
@@ -316,9 +335,14 @@ export class TelegramGateway {
         // Задаём следующий вопрос
         await this.botService.askGameName(ctx.from.id);
       }
+      return;
     }
-
-    console.log(await this.userService.getUser(ctx.from.id));
+    if ('document' in message && user) {
+      const document = message.document;
+      const fileId = document.file_id;
+      await this.botService.sendFileByFileIdPaymentProof(user, fileId);
+      await this.botService.startMessage(ctx.from.id);
+    }
   }
 
   @On('text')
@@ -350,6 +374,17 @@ export class TelegramGateway {
             });
           return false;
         }
+
+        const isExist = await this.groupService.getGroupEmail(
+          user.reg_groupId,
+          email,
+        );
+        if (isExist) {
+          await ctx.reply('⚠️ Уже зарегестрирован!').catch((e) => {
+            console.log(e);
+          });
+          return false;
+        }
       }
       await this.userService.addRegData(
         ctx.from.id,
@@ -378,7 +413,6 @@ export class TelegramGateway {
         await this.botService.confirmation(ctx.from.id);
       }
     }
-    console.log(await this.userService.getUser(ctx.from.id));
     this.upData();
   }
 }

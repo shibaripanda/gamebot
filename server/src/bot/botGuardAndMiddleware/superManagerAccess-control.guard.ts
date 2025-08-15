@@ -14,7 +14,6 @@ export class SuperManagerAccess implements CanActivate {
     if (!userId) return false;
 
     const isAllowed = Number(this.config.get<number>('MANAGER')!) === userId;
-    console.log(isAllowed);
     return isAllowed;
   }
 }

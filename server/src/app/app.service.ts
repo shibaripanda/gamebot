@@ -56,7 +56,6 @@ export class AppService implements OnModuleInit {
   async bunUsers(userIds: string[]) {
     const usersTelegramIds =
       await this.userService.getUsersTelegramIds(userIds);
-    console.log(userIds, usersTelegramIds);
     const res = await this.appMongo.findOneAndUpdate(
       { app: 'app' },
       { $addToSet: { bunUsers: { $each: usersTelegramIds } } },
@@ -79,7 +78,6 @@ export class AppService implements OnModuleInit {
       { app: 'app' },
       { _id: 0, bunUsers: 1 },
     );
-    console.log(res);
     if (res) return res.bunUsers;
   }
 
@@ -115,7 +113,6 @@ export class AppService implements OnModuleInit {
       { $addToSet: { paymentMetods: metod } },
       { returnDocument: 'after', new: true },
     );
-    console.log(res);
     if (res) return res.paymentMetods;
     return false;
   }
@@ -158,21 +155,16 @@ export class AppService implements OnModuleInit {
     const token: string = uuidv4();
     const expiresAt = now + 10 * 60 * 1000; // 10 минут
     this.tokens.set(token, { userId, used: false, expiresAt });
-
-    console.log(this.tokens);
     return token;
   }
 
   async validateToken(token: string): Promise<TokenAndUserId | null> {
-    console.log(this.tokens);
-    console.log(token);
     const data: TokenData | undefined = this.tokens.get(token);
     if (!data || data.used || data.expiresAt < Date.now()) return null;
 
     data.used = true;
     this.tokens.set(token, data);
     this.tokens.delete(token);
-    console.log(this.tokens);
     return {
       token: await this.jwt.signAsync({ userId: data.userId }),
       userId: data.userId,

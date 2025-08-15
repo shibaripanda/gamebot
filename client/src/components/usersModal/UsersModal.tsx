@@ -50,7 +50,6 @@ export function UsersModal({ socket, title, filter, butColor, butDisabled}: Sett
   const getUsers = async () => {
     socket.emit('getUsers', {}, (response: { success: boolean; message: string; users: UserApp[] }) => {
         if (!response.success) return;
-        console.log(response.users)
         setUsers([...response.users.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())]);
         if(filter.length) setSelection(response.users.filter(us => filter.includes(us.id)).map(us => us._id));
       });
@@ -81,8 +80,7 @@ export function UsersModal({ socket, title, filter, butColor, butDisabled}: Sett
 
   useEffect(() => {
     if (opened) {
-      socket.on('upUsers', (time) => {
-      console.log('upUsers:', time);
+      socket.on('upUsers', () => {
       getUsers()
       getBunUsers()
     });

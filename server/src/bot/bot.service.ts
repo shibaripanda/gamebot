@@ -7,7 +7,9 @@ import { Group } from 'src/group/group.model';
 import { GroupService } from 'src/group/group.service';
 import { UserService } from 'src/user/user.service';
 import { Telegraf } from 'telegraf';
-import { Message } from '@telegraf/types';
+import { InlineKeyboardButton, Message } from '@telegraf/types';
+import { appText } from 'src/app/texts';
+import { User } from 'src/user/user.model';
 
 @Injectable()
 export class BotService {
@@ -18,6 +20,11 @@ export class BotService {
     private userService: UserService,
     private appService: AppService,
   ) {}
+
+  async sendDocument(chatId: number, filePath: string, options?: any) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    await this.bot.telegram.sendDocument(chatId, { source: filePath }, options);
+  }
 
   async getImage(file_id: string) {
     try {
@@ -32,6 +39,110 @@ export class BotService {
       console.error('Ошибка загрузки фото из Telegram:', err);
       return null;
     }
+  }
+
+  async broadcastMessageTest(
+    text: string,
+    all: boolean,
+    userId: number,
+  ): Promise<void> {
+    let buttons: InlineKeyboardButton[][] = [];
+    if (!all) {
+      buttons = [
+        [
+          {
+            text: 'Подарки от Крюгера',
+            callback_data: 'takePlacePresent',
+          },
+        ],
+        [{ text: `В начало`, callback_data: 'mainMenu' }],
+      ];
+    } else {
+      buttons = [[{ text: `В начало`, callback_data: 'mainMenu' }]];
+    }
+
+    try {
+      await this.bot.telegram
+        .sendMessage(userId, text + `\n\n Тест`, {
+          reply_markup: { inline_keyboard: buttons },
+          parse_mode: 'HTML',
+        })
+        .then(async (res: Message) => {
+          await this.updateLastMessageAndEditOldMessage(userId, res.message_id);
+        })
+        .catch((e) => {
+          console.error(`Ошибка Telegram API для ${userId}:`, e);
+        });
+    } catch (err) {
+      console.error(`Ошибка при отправке пользователю ${userId}:`, err);
+    }
+  }
+
+  async broadcastMessage(
+    text: string,
+    all: boolean,
+    userId: number,
+  ): Promise<void> {
+    let userIds: number[] = [];
+    let buttons: InlineKeyboardButton[][] = [];
+    if (!all) {
+      userIds = await this.groupService.getTelegramIdsForPresentPromo();
+      buttons = [
+        [
+          {
+            text: 'Подарки от Крюгера',
+            callback_data: 'takePlacePresent',
+          },
+        ],
+        [{ text: `В начало`, callback_data: 'mainMenu' }],
+      ];
+    } else {
+      buttons = [[{ text: `В начало`, callback_data: 'mainMenu' }]];
+      const list = await this.userService.getUsersId();
+      const bunUsers = await this.appService.getBunUsers();
+
+      const bunSet = new Set(bunUsers);
+      userIds = list.filter((id) => !bunSet.has(id));
+    }
+
+    if (!userIds.length) {
+      console.warn('Нет пользователей для рассылки');
+      return;
+    }
+    userIds.push(userId);
+
+    for (let i = 0; i < userIds.length; i++) {
+      const userId = userIds[i];
+
+      try {
+        await this.bot.telegram
+          .sendMessage(
+            userId,
+            userId === userId
+              ? text + `\n\n + Рассылка: ${userIds.length - 1} пользователей`
+              : text,
+            {
+              reply_markup: { inline_keyboard: buttons },
+              parse_mode: 'HTML',
+            },
+          )
+          .then(async (res: Message) => {
+            await this.updateLastMessageAndEditOldMessage(
+              userId,
+              res.message_id,
+            );
+          })
+          .catch((e) => {
+            console.error(`Ошибка Telegram API для ${userId}:`, e);
+          });
+      } catch (err) {
+        console.error(`Ошибка при отправке пользователю ${userId}:`, err);
+      }
+
+      // Задержка между сообщениями
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    console.log(`Рассылка завершена: ${userIds.length} пользователей`);
   }
 
   async adsPromoMessage(groupId: string) {
@@ -382,7 +493,7 @@ export class BotService {
     );
 
     for (const user of usersToNotify) {
-      if (user && user.telegramId) {
+      if (user && user.telegramId && user.byByKruger === true) {
         await this.sendTextMessage(
           user.telegramId,
           `✅ <b>${user.anonName} (${user.gameName})</b>\nМожно заходить на аккаунт, но пока из альянса выходить нельзя ⚠️\n/start`,
@@ -468,11 +579,12 @@ export class BotService {
     await this.bot.telegram
       .sendMessage(
         userId,
-        `Супер! Пора заполнить ваши данные. Напишите ваше имя в игре`,
+        `<b>Супер!</b> \nПора заполнить ваши данные. Напишите ваше имя в игре`,
         {
           reply_markup: {
             inline_keyboard: buttons,
           },
+          parse_mode: 'HTML',
         },
       )
       .then(async (res: Message) => {
@@ -540,10 +652,11 @@ export class BotService {
     if (image) {
       await this.bot.telegram
         .sendPhoto(userId, image, {
-          caption: `Отлично! Теперь выберите как вы будете покупать акцию альянса.`,
+          caption: `<b>Отлично!</b> \nТеперь выберите как вы будете покупать акцию альянса.`,
           reply_markup: {
             inline_keyboard: buttons,
           },
+          parse_mode: 'HTML',
         })
         .then(async (res: Message.PhotoMessage) => {
           await this.updateLastMessageAndEditOldMessage(userId, res.message_id);
@@ -555,11 +668,12 @@ export class BotService {
       await this.bot.telegram
         .sendMessage(
           userId,
-          `Отлично! Теперь выберите как вы будете покупать акцию альянса.`,
+          `<b>Отлично!</b> \nТеперь выберите как вы будете покупать акцию альянса.`,
           {
             reply_markup: {
               inline_keyboard: buttons,
             },
+            parse_mode: 'HTML',
           },
         )
         .then(async (res: Message.TextMessage) => {
@@ -615,12 +729,12 @@ export class BotService {
     if (!group) return;
 
     const message = [
-      'Почти готово! Давайте проверим ваши данные:',
+      '<b>Почти готово!</b> \nДавайте проверим ваши данные:',
       '',
-      `🎓 Группа: ${group.promo}`,
-      `🎮 Игровое имя: ${user.reg_gameName || '—'}`,
-      `📧 Email: ${user.reg_email || '—'}`,
-      `🔒 Пароль: ${user.reg_password || '—'}`,
+      `🎓 <b>Группа:</b> ${group.promo}`,
+      `🎮 <b>Игровое имя:</b> ${user.reg_gameName || '—'}`,
+      `📧 <b>Email:</b> ${user.reg_email || '—'}`,
+      `🔒 <b>Пароль:</b> ${user.reg_password || '—'}`,
     ].join('\n');
 
     const buttons = [
@@ -632,6 +746,7 @@ export class BotService {
     await this.bot.telegram
       .sendMessage(userId, message, {
         reply_markup: { inline_keyboard: buttons },
+        parse_mode: 'HTML',
       })
       .then(async (res: Message) => {
         await this.updateLastMessageAndEditOldMessage(userId, res.message_id);
@@ -661,7 +776,7 @@ export class BotService {
     await this.bot.telegram
       .sendMessage(
         userId,
-        `Поздравляю! Вы записались в группу! Название альянса придет сюда как только заполнится группа и мы всех проверим. За ходом записи вы можете следить в чате закупки. Ваше кодовое имя: <b>${res.anonName}</b>:( Если по каким-либо причинам вы хотите удалиться из записи, то напишите в личные сообщения @crygerm`,
+        `<b>Поздравляю!</b> Вы записались в группу! \nНазвание альянса придет сюда как только заполнится группа и мы всех проверим. \nЗа ходом записи вы можете следить в чате закупки. \nВаше кодовое имя: <b>${res.anonName}</b>\n:( Если по каким-либо причинам вы хотите удалиться из записи, то напишите в личные сообщения @crygerm`,
         {
           parse_mode: 'HTML',
           reply_markup: {
@@ -714,7 +829,7 @@ export class BotService {
     await this.bot.telegram
       .sendMessage(
         userId,
-        `Поздравляю! Вы записались в группу! Название альянса придет сюда как только заполнится группа и мы всех проверим. За ходом записи вы можете следить в чате закупки. Ваше кодовое имя: <b>${res.anonName}</b>:( Если по каким-либо причинам вы хотите удалиться из записи, то напишите в личные сообщения @crygerm`,
+        `<b>Поздравляю!</b> Вы записались в группу! \nНазвание альянса придет сюда как только заполнится группа и мы всех проверим. \nЗа ходом записи вы можете следить в чате закупки. \nВаше кодовое имя: <b>${res.anonName}</b>\n:( Если по каким-либо причинам вы хотите удалиться из записи, то напишите в личные сообщения @crygerm`,
         {
           parse_mode: 'HTML',
           reply_markup: {
@@ -783,6 +898,42 @@ export class BotService {
     }
   }
 
+  async sendFileByFileIdPaymentProof(
+    user: User,
+    fileId: string,
+  ): Promise<void> {
+    try {
+      const file = await this.bot.telegram.getFile(fileId);
+      const filePath = file?.file_path?.toLowerCase() || '';
+      const chatId = this.config.get<number>('GROUP_TELEGRAM_CLOSE')!;
+      const data = `Оплата: \n${user.first_name} | ${user.username ? '@' + user.username : ''} | ${user.id}`;
+      if (
+        filePath.endsWith('.jpg') ||
+        filePath.endsWith('.jpeg') ||
+        filePath.endsWith('.png') ||
+        filePath.endsWith('.webp')
+      ) {
+        await this.bot.telegram.sendPhoto(chatId, fileId, {
+          caption: data,
+          parse_mode: 'HTML',
+        });
+      } else if (filePath.endsWith('.pdf')) {
+        await this.bot.telegram.sendDocument(chatId, fileId, {
+          caption: data,
+          parse_mode: 'HTML',
+        });
+      } else {
+        await this.bot.telegram.sendDocument(chatId, fileId, {
+          caption: data,
+          parse_mode: 'HTML',
+        });
+      }
+    } catch (error) {
+      console.error('Ошибка при отправке файла:', error);
+      throw new Error('Не удалось отправить файл по file_id.');
+    }
+  }
+
   async askPassword(userId: number) {
     const buttons = [];
     await this.bot.telegram
@@ -820,11 +971,12 @@ export class BotService {
     await this.bot.telegram
       .sendMessage(
         userId,
-        `Супер! Пора заполнить ваши данные. Напишите ваше имя в игре`,
+        `<b>Супер!</b> \nПора заполнить ваши данные. Напишите ваше имя в игре`,
         {
           reply_markup: {
             inline_keyboard: buttons,
           },
+          parse_mode: 'HTML',
         },
       )
       .then(async (res: Message) => {
@@ -873,6 +1025,12 @@ export class BotService {
     const buttons = [
       [{ text: 'Записаться в другую группу', callback_data: 'takePlace' }],
       [{ text: 'В начало', callback_data: 'mainMenu' }],
+      [
+        {
+          text: 'В чат закупок',
+          url: this.config.get<string>('CHAT_ZAKUPOK')!,
+        },
+      ],
     ];
     await this.bot.telegram
       .sendMessage(
@@ -895,15 +1053,11 @@ export class BotService {
   async extraService(userId: number) {
     const buttons = [[{ text: 'В начало', callback_data: 'mainMenu' }]];
     await this.bot.telegram
-      .sendMessage(
-        userId,
-        `Кроме доната в игры я могу помочь с оплатой подписок ... текст будет изменен`,
-        {
-          reply_markup: {
-            inline_keyboard: buttons,
-          },
+      .sendMessage(userId, appText.extraServicesText, {
+        reply_markup: {
+          inline_keyboard: buttons,
         },
-      )
+      })
       .then(async (res: Message) => {
         await this.updateLastMessageAndEditOldMessage(userId, res.message_id);
       })
@@ -918,7 +1072,7 @@ export class BotService {
       [{ text: 'В начало', callback_data: 'mainMenu' }],
     ];
     await this.bot.telegram
-      .sendMessage(userId, `Вот как тут всё устроено: текст будет изменен...`, {
+      .sendMessage(userId, appText.presentHelpText, {
         reply_markup: {
           inline_keyboard: buttons,
         },
@@ -937,7 +1091,7 @@ export class BotService {
       [{ text: 'В начало', callback_data: 'mainMenu' }],
     ];
     await this.bot.telegram
-      .sendMessage(userId, `Вот как тут всё устроено: текст будет изменен...`, {
+      .sendMessage(userId, appText.mainHelpText, {
         reply_markup: {
           inline_keyboard: buttons,
         },
@@ -1010,7 +1164,7 @@ export class BotService {
     await this.bot.telegram
       .sendMessage(
         userId,
-        `Поздравляю! Вы записались в группу! Реквизиты для оплаты и название альянса придет сюда как только заполнится группа. За ходом записи вы можете следить в чате закупки. Ваше кодовое имя <b>${res.anonName}</b>`,
+        `<b>Поздравляю!</b> Вы записались в группу! \nНазвание альянса придет сюда как только заполнится группа и мы всех проверим. \nЗа ходом записи вы можете следить в чате закупки. \nВаше кодовое имя: <b>${res.anonName}</b>\n:( Если по каким-либо причинам вы хотите удалиться из записи, то напишите в личные сообщения @crygerm`,
         {
           parse_mode: 'HTML',
           reply_markup: {
@@ -1135,19 +1289,20 @@ export class BotService {
           { text: 'Обновить', callback_data: 'takePlacePresent' },
           { text: 'В начало', callback_data: 'mainMenu' },
         ]);
-        return `Отлично в какую группу вас записать? Продолжая запись вы соглашаетесь на обработку ваших персональныхданных. Если вы не согласны то нажмите кнопку "В начало".`;
+        return `<b>Отлично в какую группу вас записать?</b>\nПродолжая запись вы соглашаетесь на обработку ваших персональных данных. \nЕсли вы не согласны то нажмите кнопку "В начало".`;
       }
       buttons.push([
         { text: 'Обновить', callback_data: 'takePlacePresent' },
         { text: 'В начало', callback_data: 'mainMenu' },
       ]);
-      return `ТО- К сожалению, группа пока не создана или находится в разработке :( За дополнительной информацией обращайтесь к @crygerm`;
+      return `К сожалению, группа пока не создана или находится в разработке :( За дополнительной информацией обращайтесь к @crygerm`;
     };
     await this.bot.telegram
       .sendMessage(userId, pickTextForEmptyPresents(), {
         reply_markup: {
           inline_keyboard: buttons,
         },
+        parse_mode: 'HTML',
       })
       .then(async (res: Message) => {
         await this.updateLastMessageAndEditOldMessage(userId, res.message_id);
@@ -1203,11 +1358,12 @@ export class BotService {
     await this.bot.telegram
       .sendMessage(
         userId,
-        `Отлично в какую группу вас записать? Продолжая запись вы соглашаетесь на обработку ваших персональныхданных. Если вы не согласны то нажмите кнопку "В начало".`,
+        `<b>Отлично! в какую группу вас записать?</b>\nПродолжая запись вы соглашаетесь на обработку ваших персональных данных. \nЕсли вы не согласны то нажмите кнопку "В начало".`,
         {
           reply_markup: {
             inline_keyboard: buttons,
           },
+          parse_mode: 'HTML',
         },
       )
       .then(async (res: Message) => {
@@ -1222,7 +1378,7 @@ export class BotService {
     await this.bot.telegram
       .sendMessage(
         userId,
-        'Всем привет, это Крюгер-бот!😎 Здесь вы можете записаться на закупку акций альянса!🤝',
+        '<b>Всем привет, это Крюгер-бот!</b>😎 \nЗдесь вы можете записаться на закупку акций альянса!🤝',
         {
           reply_markup: {
             inline_keyboard: [
@@ -1247,6 +1403,7 @@ export class BotService {
               ],
             ],
           },
+          parse_mode: 'HTML',
         },
       )
       .then(async (res: Message) => {

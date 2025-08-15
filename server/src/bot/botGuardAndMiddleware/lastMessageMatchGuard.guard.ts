@@ -20,7 +20,6 @@ export class LastMessageMatchGuard implements CanActivate {
 
     if (!messageIdFromCallback) return false;
 
-    console.log(user.lastMessage, messageIdFromCallback);
     if (user.lastMessage !== messageIdFromCallback) {
       await ctx.answerCbQuery(
         'Используй последнее сообщение или перезапусти бот',

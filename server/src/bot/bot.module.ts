@@ -57,9 +57,12 @@ import { UserModule } from '../user/user.module';
 import { GroupModule } from '../group/group.module';
 
 import { accessControlMiddleware } from './botGuardAndMiddleware/access-control.middleware';
+import { ScheduleModule } from '@nestjs/schedule';
+import { BackupService } from './backup.service';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     TelegrafModule.forRootAsync({
       imports: [],
       inject: [ConfigService, ModuleRef],
@@ -86,6 +89,7 @@ import { accessControlMiddleware } from './botGuardAndMiddleware/access-control.
     BotLifecycleService,
     TelegramGateway,
     AdminGuardAccess,
+    BackupService,
   ],
   exports: [BotService, TelegramGateway],
 })

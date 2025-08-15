@@ -63,17 +63,14 @@ export class AppGateway
   }
 
   upUsers() {
-    console.log('upUsers');
     this.server.emit('upUsers', Date.now());
   }
 
   upData() {
-    console.log('upData');
     this.server.emit('upData', Date.now());
   }
 
   closeAccess() {
-    console.log('closeAccess');
     this.server.emit('closeAccess');
   }
 
@@ -205,6 +202,36 @@ export class AppGateway
     }
   }
 
+  @SubscribeMessage('sendTestPromoMessage')
+  @UseGuards(WsJwtAuthGuard)
+  async handleSendTestPromoMessage(
+    client: SocketUserData,
+    payload: { text: string; all: boolean },
+  ) {
+    if (client.data && client.data.user) {
+      await this.botService.broadcastMessageTest(
+        payload.text,
+        payload.all,
+        client.data.user.userId,
+      );
+    }
+  }
+
+  @SubscribeMessage('sendPromoMessage')
+  @UseGuards(WsJwtAuthGuard)
+  async handleSendPromoMessage(
+    client: SocketUserData,
+    payload: { text: string; all: boolean },
+  ) {
+    if (client.data && client.data.user) {
+      await this.botService.broadcastMessage(
+        payload.text,
+        payload.all,
+        client.data.user.userId,
+      );
+    }
+  }
+
   @SubscribeMessage('testPromoMessage')
   @UseGuards(WsJwtAuthGuard)
   async handleTestPromoMessage(client: SocketUserData, payload: string) {
@@ -291,7 +318,6 @@ export class AppGateway
     client: Socket,
     payload: { groupId: string; data: Group },
   ): Promise<any> {
-    console.log(payload);
     const res = await this.groupService.updateGroupSettings(
       payload.groupId,
       payload.data,

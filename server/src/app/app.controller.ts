@@ -23,10 +23,8 @@ export class AppController {
     }
     const res = await this.appService.validateToken(startToken);
     if (!res) {
-      console.log('Close');
       throw new ForbiddenException('Недействительный токен');
     }
-    console.log('Open');
     await this.botService.alertUserHaveAccess(res.userId);
     return { token: res.token };
   }

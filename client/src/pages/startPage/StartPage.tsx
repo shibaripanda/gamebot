@@ -9,36 +9,27 @@ export function StartPage() {
   const token = searchParams.get("token");
   const [status, setStatus] = useState<string>('CLOSE')
   const navigate = useNavigate();
-  console.log(token)
-  console.log(import.meta.env.VITE_WEB_URL)
 
   useEffect(() => {
     if(token){
-      console.log('ENTER AUTH')
       auth()
     }
     else if(sessionStorage.getItem('token')){
-      console.log('REDY FOR WORK')
       setStatus('GAMEBOT')
       navigate('/dashboard')
     }
     else{
-      console.log('CLOSE AUTH')
       setStatus('CLOSE')
     }
   }, [])
 
   const auth = async () => {
-    console.log('start auth')
     await axios.get(`${import.meta.env.VITE_WEB_URL}/access/${token}`)
     .then((res) => {
-      console.log(res.data)
       sessionStorage.setItem('token', res.data.token)
-      console.log(sessionStorage.getItem('token'))
       navigate('/dashboard')
     })
-    .catch((e) => {
-      console.log(e.response.data.message)
+    .catch(() => {
       sessionStorage.removeItem('token');
       navigate('/')
     })

@@ -35,6 +35,11 @@ export class UserService implements OnModuleInit {
     return res.map((us) => Number(us.id)).filter((id) => !isNaN(id));
   }
 
+  async getUsersId(): Promise<number[]> {
+    const res: User[] = await this.userMongo.find({}, { _id: 0, id: 1 }).lean(); // lean чтобы вернуть "чистые" объекты
+    return res.map((doc) => doc.id);
+  }
+
   async getUsers() {
     const res = await this.userMongo.find();
     if (res) {
