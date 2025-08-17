@@ -44,6 +44,12 @@ export class TelegramGateway {
     this.appGateway.upData();
   }
 
+  // @Command('id')
+  // @UseGuards(AdminGuardAccess)
+  // id(@Ctx() ctx: Context) {
+  //   console.log(ctx.message);
+  // }
+
   @Command('enter')
   @UseGuards(AdminGuardAccess)
   async getAuthLink(@Ctx() ctx: Context) {
@@ -379,7 +385,7 @@ export class TelegramGateway {
           user.reg_groupId,
           email,
         );
-        if (isExist) {
+        if (!isExist) {
           await ctx.reply('⚠️ Уже зарегестрирован!').catch((e) => {
             console.log(e);
           });

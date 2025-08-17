@@ -18,6 +18,7 @@ import { AppService } from './app.service';
 import { EditPaymentMetods } from './interfaces/editPaymentMetods';
 import { TelegramGateway } from 'src/bot/bot.telegramgateway';
 import { UserService } from 'src/user/user.service';
+import { throttle } from 'lodash';
 
 interface SocketUserData {
   data: {
@@ -44,11 +45,33 @@ export class AppGateway
     private readonly appService: AppService,
     private readonly userService: UserService,
     private readonly telegramGatewayService: TelegramGateway,
-  ) {}
+  ) {
+    this.upUsers = throttle(this._emitUsersUpdate.bind(this), 5000, {
+      leading: true,
+      trailing: true,
+    });
+    this.upData = throttle(this._emitDataUpdate.bind(this), 5000, {
+      leading: true,
+      trailing: true,
+    });
+  }
   @WebSocketServer()
   server: Server;
 
   private logger: Logger = new Logger('AppGateway');
+
+  private _emitUsersUpdate() {
+    console.log('upUsers');
+    this.server.emit('upUsers', Date.now());
+  }
+
+  private _emitDataUpdate() {
+    console.log('upData');
+    this.server.emit('upData', Date.now());
+  }
+
+  upUsers: () => void;
+  upData: () => void;
 
   afterInit(server: Server) {
     server.use((socket, next) => {
@@ -62,13 +85,33 @@ export class AppGateway
     this.logger.log(`Client connected: ${client.id}`);
   }
 
-  upUsers() {
-    this.server.emit('upUsers', Date.now());
-  }
+  // upUsers() {
+  //   this._emitUsersUpdate();
+  // }
 
-  upData() {
-    this.server.emit('upData', Date.now());
-  }
+  // upUsers = throttle(
+  //   () => {
+  //     this.server.emit('upUsers', Date.now());
+  //   },
+  //   3000,
+  //   { leading: true, trailing: true },
+  // );
+
+  // upUsers() {
+  //   const now = Date.now();
+  //   if (now - this.lastUpdateTimeUsers > 3000) {
+  //     this.server.emit('upUsers', Date.now());
+  //     this.lastUpdateTimeUsers = Date.now();
+  //   }
+  // }
+
+  // upData() {
+  //   const now = Date.now();
+  //   if (now - this.lastUpdateTimeData > 3000) {
+  //     this.server.emit('upData', Date.now());
+  //     this.lastUpdateTimeData = Date.now();
+  //   }
+  // }
 
   closeAccess() {
     this.server.emit('closeAccess');
@@ -130,7 +173,8 @@ export class AppGateway
           payload.groupId,
           payload.idRegUsersForDeleteOrEdit,
         );
-        if (res.users.every((u) => u?.confirmation === true)) {
+        if (res.users.length === res.maxCountUsersInGroup) {
+          // console.log(res);
           res = await this.botService.finishGroupRegistration(res);
         }
       }

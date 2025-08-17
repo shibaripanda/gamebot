@@ -5,6 +5,15 @@ import { UserService } from '../../user/user.service';
 
 export const accessControlMiddleware = (): MiddlewareFn<Context> => {
   return async (ctx, next) => {
+    if (ctx.chat?.type !== 'private') {
+      console.log('stop');
+      return;
+    }
+
+    // Проверяем, что сообщение не от бота
+    if (ctx.from?.is_bot) {
+      return;
+    }
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const moduleRef: ModuleRef = ctx.state.moduleRef;
 

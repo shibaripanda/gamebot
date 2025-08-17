@@ -270,7 +270,10 @@ export class BotService {
       .sendMessage(
         this.config.get<number>('GROUP_TELEGRAM_OPEN')!,
         `🚀 <b>${group.name}</b>\n🚀 Группа закупилась, всем спасибо!`,
-        { parse_mode: 'HTML' },
+        {
+          message_thread_id: this.config.get<number>('TOPIC')!,
+          parse_mode: 'HTML',
+        },
       )
       .catch((e) => {
         console.log(e);
@@ -1211,7 +1214,9 @@ export class BotService {
         messageId,
         undefined,
         list,
-        { parse_mode: 'HTML' },
+        {
+          parse_mode: 'HTML',
+        },
       )
       .catch(async (error) => {
         console.log('ошибка обновления');
@@ -1235,6 +1240,7 @@ export class BotService {
     const message = await this.bot.telegram
       .sendMessage(this.config.get<number>('GROUP_TELEGRAM_OPEN')!, list, {
         parse_mode: 'HTML',
+        message_thread_id: this.config.get<number>('TOPIC')!,
       })
       .catch((e) => {
         console.log(e);
