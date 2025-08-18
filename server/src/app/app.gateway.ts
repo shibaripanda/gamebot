@@ -173,7 +173,10 @@ export class AppGateway
           payload.groupId,
           payload.idRegUsersForDeleteOrEdit,
         );
-        if (res.users.length === res.maxCountUsersInGroup) {
+        if (
+          res.users.length === res.maxCountUsersInGroup &&
+          res.users.every((u) => u?.confirmation === true)
+        ) {
           // console.log(res);
           res = await this.botService.finishGroupRegistration(res);
         }

@@ -341,6 +341,7 @@ export class BotService {
           err,
         );
       }
+      await new Promise((resolve) => setTimeout(resolve, 50));
     }
 
     if (wasUpdated) {
@@ -362,7 +363,7 @@ export class BotService {
     let wasUpdated = false;
 
     for (const user of group.users) {
-      if (!user || !user.telegramId) {
+      if (!user || !user.telegramId || user.recivedAlianceName) {
         console.log('Ошибка отправки Альянса или уже получено');
         continue;
       }
@@ -392,6 +393,7 @@ export class BotService {
           err,
         );
       }
+      await new Promise((resolve) => setTimeout(resolve, 50));
     }
 
     if (wasUpdated) {
