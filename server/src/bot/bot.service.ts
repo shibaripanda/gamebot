@@ -767,6 +767,7 @@ export class BotService {
     console.log(res, 'тут');
     await this.userService.cleaeRegData(userId);
     if (!res) {
+      await this.timeExpiredPlaceLost(userId);
       return;
     }
     const buttons = [
@@ -798,6 +799,7 @@ export class BotService {
     const message = [
       `Регистрация: <code>${res.name}</code> ${res.kruger ? 'Kruger' : 'Сам'}`,
       '',
+      `<a href="tg://user?id=${userId}">🔗 Написать</a>`,
       `😊 @${res.username}`,
       `🪪 <code>${res.promo}</code>`,
       `🥸 <code>${res.anonName}</code>`,
@@ -851,6 +853,7 @@ export class BotService {
     const message = [
       `Регистрация: <code>${res.name}</code> Подарок`,
       '',
+      `<a href="tg://user?id=${userId}">🔗 Написать</a>`,
       `😊 @${res.username}`,
       `🪪 <code>${res.promo}</code>`,
       `🥸 <code>${res.anonName}</code>`,
@@ -1026,6 +1029,34 @@ export class BotService {
       });
   }
 
+  async timeExpiredPlaceLost(userId: number) {
+    const buttons = [
+      [{ text: 'В начало', callback_data: 'mainMenu' }],
+      [
+        {
+          text: 'В чат закупок',
+          url: this.config.get<string>('CHAT_ZAKUPOK')!,
+        },
+      ],
+    ];
+    await this.bot.telegram
+      .sendMessage(
+        userId,
+        `Что-то пошло не так, вероятно время брони места в группе закончилось. Попробуйте еще раз.`,
+        {
+          reply_markup: {
+            inline_keyboard: buttons,
+          },
+        },
+      )
+      .then(async (res: Message) => {
+        await this.updateLastMessageAndEditOldMessage(userId, res.message_id);
+      })
+      .catch((er) => {
+        console.log(er);
+      });
+  }
+
   async soldOutMessage(userId: number) {
     const buttons = [
       [{ text: 'Записаться в другую группу', callback_data: 'takePlace' }],
@@ -1155,6 +1186,7 @@ export class BotService {
     console.log(res, 'тут');
     await this.userService.cleaeRegData(userId);
     if (!res) {
+      await this.timeExpiredPlaceLost(userId);
       return;
     }
     const buttons = [
@@ -1186,6 +1218,7 @@ export class BotService {
     const message = [
       `Регистрация: <code>${res.name}</code> ${res.kruger ? 'Kruger' : 'Сам'}`,
       '',
+      `<a href="tg://user?id=${userId}">🔗 Написать</a>`,
       `😊 @${res.username}`,
       `🪪 <code>${res.promo}</code>`,
       `🥸 <code>${res.anonName}</code>`,
@@ -1433,27 +1466,27 @@ export class BotService {
       });
   }
 
-  async sendOneTimeInvite(userId: number) {
-    const chatId = this.config.get<string>('ID_CHANNEL')!;
-    const time = Number(this.config.get<string>('TIME_LIFE_LINK')!);
-    const expireDate = (Math.floor(Date.now() / 1000) + 3600) * time;
-    const inviteLink = await this.bot.telegram.createChatInviteLink(chatId, {
-      member_limit: 1,
-      expire_date: expireDate,
-      name: `Invite for user ${userId}`,
-    });
-    await this.bot.telegram
-      .sendMessage(
-        userId,
-        `Ваша персональная ссылка для вступления в канал (действует следующее количество часов: ${time}):\n${inviteLink.invite_link}`,
-      )
-      .then(async (res: Message) => {
-        await this.updateLastMessageAndEditOldMessage(userId, res.message_id);
-      })
-      .catch((er) => {
-        console.log(er);
-      });
-  }
+  // async sendOneTimeInvite(userId: number) {
+  //   const chatId = this.config.get<string>('ID_CHANNEL')!;
+  //   const time = Number(this.config.get<string>('TIME_LIFE_LINK')!);
+  //   const expireDate = (Math.floor(Date.now() / 1000) + 3600) * time;
+  //   const inviteLink = await this.bot.telegram.createChatInviteLink(chatId, {
+  //     member_limit: 1,
+  //     expire_date: expireDate,
+  //     name: `Invite for user ${userId}`,
+  //   });
+  //   await this.bot.telegram
+  //     .sendMessage(
+  //       userId,
+  //       `Ваша персональная ссылка для вступления в канал (действует следующее количество часов: ${time}):\n${inviteLink.invite_link}`,
+  //     )
+  //     .then(async (res: Message) => {
+  //       await this.updateLastMessageAndEditOldMessage(userId, res.message_id);
+  //     })
+  //     .catch((er) => {
+  //       console.log(er);
+  //     });
+  // }
 
   async alertUserHaveAccess(userId: string) {
     const user = await this.userService.getUser(Number(userId));

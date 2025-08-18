@@ -66,7 +66,7 @@ export function GroupTable({socket, users, editRegUsers, groupId, paymentsMetods
         <Table.Td>{item.confirmation ? '✅' : '⏰'}</Table.Td>
         <Table.Td>{item.telegramUsername}</Table.Td>
         <Table.Td>{item.anonName}</Table.Td>
-        <Table.Td>{item.gameName}</Table.Td>
+        <Table.Td><a href={`tg://user?id=${item.telegramId}`}>{item.gameName}</a></Table.Td>
         <Table.Td>{item.email}</Table.Td>
         <Table.Td>{item.password}</Table.Td>
         <Table.Td>{item.recivedAlianceName ? '✉️' : ''}</Table.Td>

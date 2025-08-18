@@ -298,7 +298,10 @@ export class GroupService {
       (u) => u?.telegramId === userId && u.status === false,
     );
 
-    if (targetIndex === -1) return null;
+    if (targetIndex === -1) {
+      // await this.botService.
+      return null;
+    }
 
     const anonName =
       `${group.prefix} ${targetIndex + 1}` + this.getRandomSmile();
@@ -421,7 +424,7 @@ export class GroupService {
     const updates: Record<string, null> = {};
 
     users.forEach((user, index) => {
-      if (user && !user.status && user.date + 600_000 < Date.now()) {
+      if (user && !user.status && user.date + 300_000 < Date.now()) {
         updates[`users.${index}`] = null;
         users[index] = null;
       }
