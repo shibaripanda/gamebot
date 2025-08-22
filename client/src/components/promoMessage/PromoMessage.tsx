@@ -59,7 +59,7 @@ export function PromoMessage({ socket }: PromoModalProps) {
           <Button
            disabled={text === '' || !test}
            onClick={() => {
-            sendPromoMessage
+            sendPromoMessage()
             setTest(false)
             }}>
             Отправить
