@@ -411,6 +411,7 @@ export class BotService {
       if (res) {
         const message = [
           `${group.users.indexOf(res) + 1}. ${res.byByKruger ? 'Kruger' : 'Сам'}`,
+          `<a href="tg://user?id=${res.telegramId}">🔗 Написать</a>`,
           `🥸 <code>${res.anonName}</code>`,
           `🎮 <code>${res.gameName}</code>`,
           res.email && `📧 <code>${res.email}</code>`,
